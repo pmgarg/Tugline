@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # `docker exec -i <container> oh-desktop-sidecar`: the Linux AT-SPI sidecar on
 # stdio, joined to the container's desktop session bus.
+# The entrypoint writes the bus address once the session is up. A sidecar started before that (a fresh container
+# on a slow machine) used to join no bus at all and never saw a window (CI): wait for it, up to 30 s.
+for i in $(seq 1 300); do [ -s /tmp/oh-session.env ] && break; sleep 0.1; done
 [ -f /tmp/oh-session.env ] && . /tmp/oh-session.env
 export DISPLAY="${DISPLAY:-:1}" NO_AT_BRIDGE=0
 exec python3 /opt/tugline/linux_atspi.py

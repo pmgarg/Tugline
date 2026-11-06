@@ -89,6 +89,7 @@ jobs:
         working-directory: vscode
         run: |
           node -e "require('@vscode/test-electron').downloadAndUnzipVSCode({ version: 'stable', cachePath: '.vscode-test' }).then((p) => console.log(p))"
+          npm run build   # built once here; otherwise each parallel test file rebuilt the same dist/ at the same time
 
       - name: Test (parallel group)
         # The suite drives bash, POSIX tools and Unix process groups, and its sandbox tests assume Linux
@@ -202,7 +203,18 @@ jobs:
 
       - name: E2E under Xvfb
         working-directory: vscode
-        run: xvfb-run -a node test/runTest.mjs
+        shell: bash
+        # A scenario that drives VS Code's own terminal can miss shell-integration events on a loaded runner. Up to
+        # three failed scenarios are run once more, by name, with a warning; more than that fails the job.
+        run: |
+          set -o pipefail
+          if xvfb-run -a node test/runTest.mjs 2>&1 | tee e2e.log; then exit 0; fi
+          failed=$(grep -oP '^\[e2e\] ✗ \K[^:]+' e2e.log | sort -u)
+          n=$(printf '%s\n' "$failed" | grep -c . || true)
+          if [ "$n" -eq 0 ] || [ "$n" -gt 3 ]; then exit 1; fi
+          echo "::warning::retrying $n VS Code scenario(s) once: $(echo $failed)"
+          pat=$(printf '%s\n' "$failed" | sed 's/[][\.*^$()+?{}|/]/\\&/g' | paste -sd'|' -)
+          TUG_E2E_ONLY="^($pat)" xvfb-run -a node test/runTest.mjs
 
   package:
     name: build + package

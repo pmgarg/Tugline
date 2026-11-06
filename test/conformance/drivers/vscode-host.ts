@@ -46,11 +46,25 @@ export const driver: SurfaceDriver = {
       if (b.status !== 0) throw new Error(`extension build failed: ${b.stderr}`);
     }
     if (!process.env.DISPLAY) {
-      const disp = `:${90 + Math.floor(Math.random() * 9)}`;
-      xvfb = spawn('Xvfb', [disp, '-screen', '0', '1280x1024x24', '-nolisten', 'tcp'], { stdio: 'ignore' });
+      // Xvfb picks a free display itself (-displayfd). A random :90-:98 collided when several test files ran this
+      // driver in parallel (CI): one file's teardown killed the X server the other's VS Code was using.
+      const x = spawn('Xvfb', ['-displayfd', '3', '-screen', '0', '1280x1024x24', '-nolisten', 'tcp'], { stdio: ['ignore', 'ignore', 'ignore', 'pipe'] });
+      xvfb = x;
+      const num = await new Promise<string>((resolve, reject) => {
+        let buf = '';
+        const timer = setTimeout(() => reject(new Error('Xvfb did not report a display in 15 s')), 15_000);
+        (x.stdio[3] as NodeJS.ReadableStream).on('data', (d: Buffer) => {
+          buf += d.toString();
+          if (buf.includes('\n')) {
+            clearTimeout(timer);
+            resolve(buf.trim());
+          }
+        });
+        x.once('exit', (c) => (clearTimeout(timer), reject(new Error(`Xvfb exited (${c})`))));
+      });
+      const disp = `:${num}`;
       process.env.DISPLAY = disp;
       ownDisplay = disp;
-      await new Promise((r) => setTimeout(r, 800));
     }
   },
   async teardown() {

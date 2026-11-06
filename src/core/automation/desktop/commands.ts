@@ -68,6 +68,15 @@ export async function sandboxUp(config: HarnessConfig, o: { build?: boolean; log
   await run('docker', ['rm', '-f', cfg.sandbox.container], 30_000);
   const r = await run('docker', sandboxRunArgs(cfg), 60_000);
   if (r.code !== 0) return { ok: false, message: `docker run failed: ${r.out.slice(-2000)}` };
+  // "up" means the desktop is ready (display, session bus, AT-SPI, the sample app), not just that the container
+  // started: a sidecar that connected before the session bus existed never saw a window (CI)
+  let ready = false;
+  for (let i = 0; i < 60 && !ready; i++) {
+    const l = await run('docker', ['logs', cfg.sandbox.container], 10_000);
+    ready = /desktop sandbox ready/.test(l.out);
+    if (!ready) await new Promise((res) => setTimeout(res, 500));
+  }
+  if (!ready) return { ok: false, message: `desktop sandbox "${cfg.sandbox.container}" started but did not report ready in 30 s (docker logs ${cfg.sandbox.container})` };
   return { ok: true, message: `desktop sandbox "${cfg.sandbox.container}" is up. Watch it at http://127.0.0.1:${cfg.sandbox.vncPort}/vnc.html · point the agent at it with desktop.backend = "sandbox"` };
 }
 
