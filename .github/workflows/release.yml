@@ -95,7 +95,8 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           tag="latest"; case "${GITHUB_REF_NAME}" in *-*) tag="beta";; esac
-          npm publish out/tugline-*.tgz --access public --provenance --tag "$tag"
+          # "./" matters: without it npm reads "out/tugline-….tgz" as a GitHub repo (owner "out")
+          npm publish ./out/tugline-*.tgz --access public --provenance --tag "$tag"
       - name: GitHub release
         if: env.DRY_RUN != 'true' && startsWith(github.ref, 'refs/tags/v')
         env:
