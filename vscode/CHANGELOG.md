@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.2.6 (pre-release): a chat website's address is explained, not "not valid JSON"
-- When the base URL is the address of a chat website, not its API, the server answers with a web page. Tugline used to show "Unexpected token '<', \"<!doctype\" is not valid JSON" under "Can't reach". It now says that the address is a web page, not an API, and names the sign-in page if it was redirected to one.
+- When the base URL is the address of a chat website, not its API, the server answers with a web page. Tugline used to show "Unexpected token '<', "<!doctype" is not valid JSON" under "Can't reach". It now says that the address is a web page, not an API, and names the sign-in page if it was redirected to one.
 - It also tries the usual API addresses on the same server (`/v1`, `/api`, `/api/v1`). If one answers, the setup card and **Configure LLM Endpoint** offer it as a button.
 
 ## 1.2.5 (pre-release, with CLI 1.2.0-beta.5): fixes from CI on GitHub's runners
