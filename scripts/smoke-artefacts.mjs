@@ -137,7 +137,7 @@ async function smokeNpm(tgz, failures, log) {
       failures.push(`npm install ${path.basename(tgz)} failed:\n${inst.out.slice(-2000)}`);
       return;
     }
-    const bin = path.join(tmp, 'node_modules', '.bin', isWin ? 'oh.cmd' : 'tug');
+    const bin = path.join(tmp, 'node_modules', '.bin', isWin ? 'tug.cmd' : 'tug');
     if (!fs.existsSync(bin)) {
       failures.push(`the package installed no "tug" bin shim (${bin})`);
       return;

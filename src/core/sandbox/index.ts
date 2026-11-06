@@ -386,7 +386,12 @@ function resolverFiles(): string[] {
 export function hardenedBwrapBase(o: HardenedBaseOptions): string[] {
   const a = ['--ro-bind', '/', '/', '--dev', '/dev', '--proc', '/proc', '--tmpfs', '/tmp'];
   if (o.hideSockets !== false) {
+    const hidden: string[] = [];
     for (const d of runtimeSocketDirs()) {
+      // $XDG_RUNTIME_DIR is usually /run/user/<uid>: already hidden by the empty /run, and bwrap cannot create
+      // its mount point inside the read-only tmpfs (every command failed on desktops and CI: "Can't mkdir
+      // parents for /run/user/1001: Read-only file system")
+      if (hidden.some((h) => within(d, h))) continue;
       let st: fs.Stats | undefined;
       try {
         st = fs.lstatSync(d);
@@ -396,6 +401,7 @@ export function hardenedBwrapBase(o: HardenedBaseOptions): string[] {
       if (st.isSymbolicLink() || !st.isDirectory()) continue; // /var/run → /run is covered by /run
       if (within(o.workspace, d)) continue; // never hide the workspace itself
       a.push('--tmpfs', d, '--remount-ro', d);
+      hidden.push(d);
     }
     if (o.keepResolver) for (const f of resolverFiles()) a.push('--ro-bind', f, f);
   }
