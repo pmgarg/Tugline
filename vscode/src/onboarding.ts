@@ -11,7 +11,7 @@
  * Every action on the card is a button, so setup works with the mouse only. The
  * keyboard wizard (Tugline: Configure LLM Endpoint) stays for custom URLs.
  */
-import { LLMClient } from '../../src/core/llm/client.js';
+import { LLMClient, LLMError } from '../../src/core/llm/client.js';
 import { detectLocalServers, detectOllama, LOCAL_SERVERS, ollamaCapabilities, sortModelChoices, toChoice, type LocalServer, type ModelChoice } from '../../src/core/llm/ollama.js';
 import type { ModelProfile } from '../../src/core/types.js';
 
@@ -22,6 +22,10 @@ export interface OnboardingView {
   baseUrl: string;
   model: string;
   error?: string;
+  /** state 'unreachable': the server answered, but with a web page (the chat site's address, not its API) */
+  notApi?: boolean;
+  /** with notApi: a base URL on the same server that answers as an API */
+  suggestBaseUrl?: string;
   /** local servers that answered (state 'unreachable') */
   servers: LocalServer[];
   /** chat models, best first */
@@ -51,6 +55,9 @@ export function modelListed(model: string, ids: string[]): boolean {
   });
 }
 
+const notApi = (e: unknown): Pick<OnboardingView, 'notApi' | 'suggestBaseUrl'> =>
+  e instanceof LLMError && e.kind === 'not_api' ? { notApi: true, ...(e.suggestedBaseUrl ? { suggestBaseUrl: e.suggestedBaseUrl } : {}) } : {};
+
 async function listModels(p: Endpoint, timeoutMs: number): Promise<string[]> {
   return new LLMClient({ name: 'onboarding', baseUrl: p.baseUrl, apiKey: p.apiKey, headers: p.headers, model: p.model, contextWindow: 0, maxOutputTokens: 0, toolMode: 'auto', vision: false, timeoutMs }).listModels(AbortSignal.timeout(timeoutMs));
 }
@@ -72,7 +79,7 @@ export async function setupCheck(p: Endpoint, d: OnboardingDeps = {}): Promise<O
     ids = await listModels(p, d.timeoutMs ?? 5000);
   } catch (e) {
     const servers = await detectLocalServers(d.candidates ?? LOCAL_SERVERS, { fetch: d.fetch });
-    return { state: 'unreachable', baseUrl: p.baseUrl, model: p.model, error: (e as Error).message.slice(0, 300), servers, models: [] };
+    return { state: 'unreachable', baseUrl: p.baseUrl, model: p.model, error: (e as Error).message.slice(0, 500), ...notApi(e), servers, models: [] };
   }
   if (p.model && modelListed(p.model, ids)) return undefined;
   const { models, ollama } = await modelChoices(p.baseUrl, ids, d);
@@ -85,7 +92,7 @@ export async function serverModels(p: Endpoint, d: OnboardingDeps = {}): Promise
   try {
     ids = await listModels(p, d.timeoutMs ?? 5000);
   } catch (e) {
-    return { state: 'unreachable', baseUrl: p.baseUrl, model: p.model, error: (e as Error).message.slice(0, 300), servers: await detectLocalServers(d.candidates ?? LOCAL_SERVERS, { fetch: d.fetch }), models: [] };
+    return { state: 'unreachable', baseUrl: p.baseUrl, model: p.model, error: (e as Error).message.slice(0, 500), ...notApi(e), servers: await detectLocalServers(d.candidates ?? LOCAL_SERVERS, { fetch: d.fetch }), models: [] };
   }
   const { models, ollama } = await modelChoices(p.baseUrl, ids, d);
   return { state: 'pickModel', baseUrl: p.baseUrl, model: p.model, servers: [], models, ollama };

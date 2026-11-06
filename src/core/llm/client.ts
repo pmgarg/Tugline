@@ -27,11 +27,48 @@ import { cacheBodyFields, cachedTokensFrom, looksLikeLlamaCpp, type CacheSlotReq
 export class LLMError extends Error {
   constructor(
     message: string,
-    public readonly kind: 'http' | 'network' | 'timeout' | 'context_overflow' | 'aborted' | 'auth' | 'rate_limit' | 'bad_request' | 'budget',
+    public readonly kind: 'http' | 'network' | 'timeout' | 'context_overflow' | 'aborted' | 'auth' | 'rate_limit' | 'bad_request' | 'budget' | 'not_api',
     public readonly status?: number,
     public readonly body?: string,
+    /** kind 'not_api': a base URL on the same server that does answer as an API */
+    public readonly suggestedBaseUrl?: string,
   ) {
     super(message);
+  }
+}
+
+const looksLikeHtml = (res: Response, text: string) => /^\s*</.test(text) || (res.headers.get('content-type') ?? '').includes('text/html');
+
+/**
+ * The usual setup mistake: the base URL is the address of a chat website, not its API, so the server answers
+ * with a web page ("Unexpected token '<', \"<!doctype\" is not valid JSON"). Say that in plain words.
+ */
+export function notApiMessage(base: string, res: Response, suggestion?: { baseUrl: string; models: number }): string {
+  let to = '';
+  try {
+    if (res.redirected && res.url && new URL(res.url).origin !== new URL(base).origin) to = ` (it redirected to ${new URL(res.url).origin}, probably a sign-in page)`;
+  } catch {
+    /* not a URL */
+  }
+  const head = `${base} answered with a web page, not an OpenAI-compatible API${to}.`;
+  if (suggestion) return `${head} ${suggestion.baseUrl} answers as an API (${suggestion.models} model${suggestion.models === 1 ? '' : 's'}): use that as the base URL.`;
+  return `${head} Use the API's base URL, not the chat website's address. It usually ends in /v1 (for example https://ai.example.com/v1); Open WebUI's is https://<host>/api, with an API key from Settings > Account. Your administrator can tell you the API address.`;
+}
+
+/** Model ids from a /models answer (OpenAI `data[].id` or Ollama-style `models[].name`). */
+function modelIds(j: any): string[] {
+  const ids: unknown[] = Array.isArray(j?.data) ? j.data.map((d: any) => d?.id) : Array.isArray(j?.models) ? j.models.map((m: any) => m?.name ?? m?.id) : [];
+  return ids.filter((x): x is string => typeof x === 'string' && x.length > 0).sort();
+}
+
+/** A response body as JSON; a web page or other non-JSON becomes an LLMError that says what came back. */
+export async function apiJson(res: Response, base: string): Promise<any> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    if (looksLikeHtml(res, text)) throw new LLMError(notApiMessage(base, res), 'not_api', res.status, text.slice(0, 500));
+    throw new LLMError(`${base} did not answer with JSON: ${text.slice(0, 160)}`, 'bad_request', res.status, text.slice(0, 500));
   }
 }
 
@@ -179,9 +216,40 @@ export class LLMClient {
   async listModels(signal?: AbortSignal): Promise<string[]> {
     const base = this.profile.baseUrl.replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
     const res = await fetch(`${base}/models`, { headers: this.headers(), signal });
-    if (!res.ok) throw new LLMError(`GET /models failed: ${res.status} ${await res.text().catch(() => '')}`.slice(0, 400), 'http', res.status);
-    const j = (await res.json()) as { data?: { id: string }[]; models?: { name: string }[] };
-    return (j.data?.map((d) => d.id) ?? j.models?.map((m) => m.name) ?? []).sort();
+    try {
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        if (looksLikeHtml(res, text)) throw new LLMError(notApiMessage(base, res), 'not_api', res.status, text.slice(0, 500));
+        throw new LLMError(`GET /models failed: ${res.status} ${text}`.slice(0, 400), 'http', res.status);
+      }
+      return modelIds(await apiJson(res, base));
+    } catch (e) {
+      if (!(e instanceof LLMError) || e.kind !== 'not_api') throw e;
+      const found = await this.findApiBase(base, signal);
+      throw found ? new LLMError(notApiMessage(base, res, found), 'not_api', e.status, e.body, found.baseUrl) : e;
+    }
+  }
+
+  /** The base URL answered with a web page: try the usual API paths on the same server (same origin, same key). */
+  private async findApiBase(base: string, signal?: AbortSignal): Promise<{ baseUrl: string; models: number } | undefined> {
+    let origin: string;
+    try {
+      origin = new URL(base).origin;
+    } catch {
+      return undefined;
+    }
+    const tries = [...new Set([`${base}/v1`, `${base}/api`, `${origin}/v1`, `${origin}/api`, `${origin}/api/v1`])].filter((c) => c !== base);
+    for (const c of tries) {
+      try {
+        const r = await fetch(`${c}/models`, { headers: this.headers(), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(4000)]) : AbortSignal.timeout(4000) });
+        if (!r.ok) continue;
+        const ids = modelIds(JSON.parse(await r.text()));
+        if (ids.length) return { baseUrl: c, models: ids.length };
+      } catch {
+        /* next */
+      }
+    }
+    return undefined;
   }
 
   private buildBody(req: CompletionRequest, mode: 'native' | 'text'): Record<string, unknown> {
@@ -360,7 +428,7 @@ export class LLMClient {
   }
 
   private async readJson(res: Response, req: CompletionRequest): Promise<RawReply> {
-    const j = (await res.json()) as any;
+    const j = (await apiJson(res, this.profile.baseUrl)) as any;
     if (j.error) throw new LLMError(`LLM error: ${JSON.stringify(j.error).slice(0, 300)}`, 'bad_request');
     if (typeof j.system_fingerprint === 'string') this.systemFingerprint = j.system_fingerprint;
     if (looksLikeLlamaCpp(j)) this.detectedServer ??= 'llamacpp';

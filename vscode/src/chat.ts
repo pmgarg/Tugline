@@ -641,7 +641,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     // WS9: endpoint down or model not installed → the clickable card instead of a probe that can only fail
     const card = await this.checkSetup();
     if (card) {
-      void vscode.window.showWarningMessage(card.state === 'unreachable' ? `Tugline: cannot reach ${p.baseUrl}. Pick a local server in the chat panel, or configure another endpoint.` : `Tugline: model "${p.model}" is not available at ${p.baseUrl}. Pick one in the chat panel.`);
+      void vscode.window.showWarningMessage(
+        card.state === 'unreachable' && card.notApi
+          ? `Tugline: ${p.baseUrl} is a web page, not an API. ${card.suggestBaseUrl ? `The API is at ${card.suggestBaseUrl}: pick it in the chat panel.` : 'Set the API base URL (it usually ends in /v1).'}`
+          : card.state === 'unreachable'
+            ? `Tugline: cannot reach ${p.baseUrl}. Pick a local server in the chat panel, or configure another endpoint.`
+            : `Tugline: model "${p.model}" is not available at ${p.baseUrl}. Pick one in the chat panel.`,
+      );
       return;
     }
     await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Tugline: testing ${p.model} @ ${p.baseUrl}…` }, async () => {

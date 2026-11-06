@@ -19,7 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { loadConfig, resolveProfile } from '../../src/core/config.js';
-import { LLMClient, type CompletionRequest } from '../../src/core/llm/client.js';
+import { LLMClient, LLMError, type CompletionRequest } from '../../src/core/llm/client.js';
 import { admittedComplete } from './coreBridge.js';
 import { rawAdmission } from '../../src/core/llm/admission.js';
 import { isKilled, killAutomation, resetKillSwitch } from '../../src/core/automation/policy/index.js';
@@ -76,10 +76,17 @@ async function configureWizard(ctx: vscode.ExtensionContext, provider: ChatViewP
     else await ctx.secrets.delete(SECRET_KEY);
   }
   let models: string[] = [];
+  const apiKey = key || (await ctx.secrets.get(SECRET_KEY)) || '';
+  const list = (url: string) => new LLMClient({ name: 'x', baseUrl: url, apiKey, model: '', contextWindow: 0, maxOutputTokens: 0, toolMode: 'auto', vision: false }).listModels();
   try {
-    models = await new LLMClient({ name: 'x', baseUrl, apiKey: key || (await ctx.secrets.get(SECRET_KEY)) || '', model: '', contextWindow: 0, maxOutputTokens: 0, toolMode: 'auto', vision: false }).listModels();
+    models = await list(baseUrl);
   } catch (e) {
-    vscode.window.showWarningMessage(`Could not list models: ${(e as Error).message}`);
+    // a chat website's address instead of its API: offer the API address found on the same server
+    const api = e instanceof LLMError && e.kind === 'not_api' ? e.suggestedBaseUrl : undefined;
+    if (api && (await vscode.window.showWarningMessage(`${baseUrl} is a web page, not an API. The API is at ${api}. Use it?`, 'Use it', 'Keep mine')) === 'Use it') {
+      await s.update('baseUrl', api, vscode.ConfigurationTarget.Global);
+      models = await list(api).catch(() => []);
+    } else if (!api) vscode.window.showWarningMessage(`Could not list models: ${(e as Error).message}`);
   }
   const model = models.length
     ? (await vscode.window.showQuickPick(models, { title: 'Model', placeHolder: cur.model }))

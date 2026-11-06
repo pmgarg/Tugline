@@ -510,7 +510,12 @@
     document.querySelectorAll('.msg.onboard').forEach((e) => e.remove());
     if (!v) return;
     let title, body = '';
-    if (v.state === 'unreachable') {
+    if (v.state === 'unreachable' && v.notApi) {
+      // the server answered, with a web page: the address of a chat website, not its API
+      title = `${esc(host(v.baseUrl))} answered with a web page, not an API`;
+      body += v.error ? `<div class="hint">${esc(v.error)}</div>` : '';
+      if (v.suggestBaseUrl) body += `<div class="obh">The API is here — click to use it:</div><div class="obl"><button data-ob="useServer" data-url="${esc(v.suggestBaseUrl)}" title="${esc(v.suggestBaseUrl)}">${esc(v.suggestBaseUrl)}</button></div>`;
+    } else if (v.state === 'unreachable') {
       title = `Can't reach ${esc(v.baseUrl)}`;
       body += v.error ? `<div class="hint">${esc(v.error)}</div>` : '';
       body += v.servers.length

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.6 (pre-release): a chat website's address is explained, not "not valid JSON"
+- When the base URL is the address of a chat website, not its API, the server answers with a web page. Tugline used to show "Unexpected token '<', \"<!doctype\" is not valid JSON" under "Can't reach". It now says that the address is a web page, not an API, and names the sign-in page if it was redirected to one.
+- It also tries the usual API addresses on the same server (`/v1`, `/api`, `/api/v1`). If one answers, the setup card and **Configure LLM Endpoint** offer it as a button.
+
 ## 1.2.5 (pre-release, with CLI 1.2.0-beta.5): fixes from CI on GitHub's runners
 - **The visible terminal:** on some machines VS Code did not report that a command had started, so every command waited for the 120-second timeout. Tugline now recognises the start reliably. If a command still does not start within 15 seconds, Tugline cancels it, says that it did not run, and runs commands in the background from then on.
 - **The Linux sandbox:** every sandboxed command failed when `$XDG_RUNTIME_DIR` is `/run/user/<uid>`, the normal Linux desktop setup. Commands with network access failed on systems using systemd-resolved. Both are fixed.
