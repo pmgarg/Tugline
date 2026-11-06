@@ -39,6 +39,8 @@ export interface TermApi {
   createTerminal(o: { name: string; cwd: string; env: Record<string, string | null | undefined>; strictEnv: boolean }): TermLike;
   onDidChangeTerminalShellIntegration(cb: (e: { terminal: TermLike; shellIntegration: ShellIntegrationLike }) => void): Disposable;
   onDidEndTerminalShellExecution(cb: (e: { terminal: TermLike; execution: ExecutionLike; exitCode: number | undefined }) => void): Disposable;
+  /** when the shell actually starts a command (optional: without it there is no start watchdog) */
+  onDidStartTerminalShellExecution?(cb: (e: { terminal: TermLike; execution: ExecutionLike }) => void): Disposable;
   onDidCloseTerminal(cb: (t: TermLike) => void): Disposable;
 }
 
@@ -287,6 +289,8 @@ export interface RunnerOptions {
   /** the terminal's shell (VS Code: `vscode.env.shell`); decides the command-line dialect */
   shellPath?: () => string | undefined;
   platform?: NodeJS.Platform;
+  /** how long the shell may take to start a sent command before it is cancelled (default 15 s) */
+  startTimeoutMs?: number;
 }
 
 export class VisibleTerminalRunner {
@@ -294,6 +298,8 @@ export class VisibleTerminalRunner {
   private key = '';
   private cwd?: string;
   private noIntegration = new WeakSet<TermLike>();
+  /** the terminal once accepted a command and never started it: commands run hidden from then on (CI found it) */
+  private unreliable = false;
   private busy: Promise<unknown> = Promise.resolve();
   private subs: Disposable[] = [];
   /** Last result, for tests and the UI. */
@@ -367,6 +373,7 @@ export class VisibleTerminalRunner {
     if (cmd.signal?.aborted) return undefined;
     // Decide the dialect first: an unknown shell or an inexpressible line declines before anything is sent.
     const shellPath = this.o.shellPath?.();
+    if (this.unreliable) return undefined; // run hidden: this terminal did not start a sent command before
     const kind = shellKindOf(shellPath, this.o.platform ?? process.platform);
     if (!kind) return undefined;
     const probe = commandLineForShell(kind, cmd, { terminalCwd: undefined, shellPath });
@@ -381,9 +388,37 @@ export class VisibleTerminalRunner {
     let execution: ExecutionLike | undefined;
     let resolveEnd!: (code: number | undefined) => void;
     const ended = new Promise<number | undefined>((r) => (resolveEnd = r));
+    // The start and end events are matched by terminal too: VS Code does not always hand back the execution object
+    // that executeCommand returned (seen with the start event), and this runner sends one command at a time.
+    let other: ExecutionLike | undefined;
+    let otherRaw = '';
     const endSub = this.api.onDidEndTerminalShellExecution((e) => {
-      if (e.execution === execution) resolveEnd(e.exitCode);
+      if (e.execution === execution || (execution && e.terminal === t)) resolveEnd(e.exitCode);
     });
+    // Start watchdog: VS Code can accept a command line that the shell then never starts (shell integration up,
+    // command detection not working: seen on GitHub's Ubuntu runners). Without it every such command waited for
+    // its whole timeout with no output.
+    let startedRun = !this.api.onDidStartTerminalShellExecution;
+    let resolveNoStart!: () => void;
+    const noStart = new Promise<'nostart'>((r) => (resolveNoStart = () => r('nostart')));
+    // matched by terminal, not by execution object: VS Code's start event does not always carry the same object
+    // that executeCommand returned (it did for the end event), and this runner sends one command at a time
+    const startSub = this.api.onDidStartTerminalShellExecution?.((e) => {
+      if (e.execution !== execution && e.terminal !== t) return;
+      startedRun = true;
+      if (e.execution !== execution && !other) {
+        // the shell's own execution object: its output stream is the one that carries the data
+        other = e.execution;
+        void (async () => {
+          for await (const d of other!.read()) if (otherRaw.length < 2_000_000) otherRaw += d;
+        })().catch(() => undefined);
+      }
+    });
+    const startTimer = this.api.onDidStartTerminalShellExecution
+      ? setTimeout(() => {
+          if (!startedRun) resolveNoStart();
+        }, this.o.startTimeoutMs ?? 15_000)
+      : undefined;
     const interrupt = () => t.sendText('\x03', false);
     const timer = setTimeout(() => {
       timedOut = true;
@@ -396,11 +431,14 @@ export class VisibleTerminalRunner {
     } catch {
       // nothing was started: let the bash tool spawn the hidden process
       clearTimeout(timer);
+      clearTimeout(startTimer);
       cmd.signal?.removeEventListener('abort', interrupt);
       endSub.dispose();
+      startSub?.dispose();
       return undefined;
     }
     // From here on the command is running: never throw (the caller would run it a second time).
+    let check: ReturnType<typeof setInterval> | undefined;
     try {
       this.cwd = cmd.cwd;
       const reading = (async () => {
@@ -408,19 +446,33 @@ export class VisibleTerminalRunner {
       })().catch(() => undefined);
       // After an interrupt, give the shell a grace period to report the end.
       const grace = new Promise<'grace'>((r) => {
-        const check = setInterval(() => {
+        check = setInterval(() => {
           if (timedOut || cmd.signal?.aborted) {
             clearInterval(check);
-            setTimeout(() => r('grace'), this.o.killGraceMs ?? 3000);
+            setTimeout(() => r('grace'), this.o.killGraceMs ?? 3000).unref?.();
           }
         }, 100);
         void ended.then(() => clearInterval(check));
+        void noStart.then(() => clearInterval(check));
       });
-      const code = await Promise.race([ended, grace]);
+      const notStarted = noStart.then<number | undefined | 'nostart'>(() => (startedRun || raw || otherRaw ? ended : 'nostart'));
+      const code: number | undefined | 'grace' | 'nostart' = await Promise.race([ended, grace, notStarted]);
+      if (code === 'nostart') {
+        interrupt(); // clear the typed line so it cannot start later
+        this.unreliable = true;
+        const result: HostCommandResult = {
+          exitCode: null,
+          output: `the Tugline terminal did not start the command within ${Math.round((this.o.startTimeoutMs ?? 15_000) / 1000)} s (VS Code's shell integration did not report it); it was cancelled and did not run. Commands run in the background from now on; run it again.`,
+          timedOut: false,
+          durationMs: Date.now() - started,
+        };
+        this.last = { commandLine: line, result, terminal: t.name };
+        return result;
+      }
       await Promise.race([reading, new Promise((r) => setTimeout(r, 500))]);
       const result: HostCommandResult = {
         exitCode: timedOut || cmd.signal?.aborted ? null : code === 'grace' ? null : (code ?? null),
-        output: stripAnsi(raw).replace(/\n+$/, ''),
+        output: stripAnsi(otherRaw.length > raw.length ? otherRaw : raw).replace(/\n+$/, ''),
         timedOut,
         durationMs: Date.now() - started,
       };
@@ -431,9 +483,12 @@ export class VisibleTerminalRunner {
       this.last = { commandLine: line, result, terminal: t.name };
       return result;
     } finally {
+      clearInterval(check);
       clearTimeout(timer);
+      clearTimeout(startTimer);
       cmd.signal?.removeEventListener('abort', interrupt);
       endSub.dispose();
+      startSub?.dispose();
     }
   }
 }

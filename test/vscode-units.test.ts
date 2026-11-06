@@ -340,8 +340,9 @@ class FakeTerm implements TermLike {
   }
 }
 
-function fakeTermApi(behaviour: { integration: boolean; output?: string[]; exitCode?: number; hang?: boolean }) {
+function fakeTermApi(behaviour: { integration: boolean; output?: string[]; exitCode?: number; hang?: boolean; startEvents?: 'fire' | 'never' }) {
   const ends: ((e: any) => void)[] = [];
+  const starts: ((e: any) => void)[] = [];
   const integ: ((e: any) => void)[] = [];
   const terms: FakeTerm[] = [];
   const executed: string[] = [];
@@ -359,6 +360,7 @@ function fakeTermApi(behaviour: { integration: boolean; output?: string[]; exitC
                   for (const o of behaviour.output ?? []) yield o;
                 },
               };
+              if (behaviour.startEvents === 'fire') setTimeout(() => starts.forEach((f) => f({ terminal: t, execution: ex })), 2);
               if (!behaviour.hang) setTimeout(() => ends.forEach((f) => f({ terminal: t, execution: ex, exitCode: behaviour.exitCode ?? 0 })), 10);
               return ex;
             },
@@ -378,9 +380,34 @@ function fakeTermApi(behaviour: { integration: boolean; output?: string[]; exitC
     onDidCloseTerminal() {
       return { dispose() {} };
     },
+    ...(behaviour.startEvents
+      ? {
+          onDidStartTerminalShellExecution(cb: (e: any) => void) {
+            starts.push(cb);
+            return { dispose: () => starts.splice(starts.indexOf(cb), 1) };
+          },
+        }
+      : {}),
   };
   return { api, terms, executed };
 }
+
+test('B10 (CI): a command the terminal accepts but never starts is cancelled after the start timeout, not waited on; later commands run hidden', async () => {
+  const f = fakeTermApi({ integration: true, hang: true, startEvents: 'never' });
+  const r = new VisibleTerminalRunner(f.api, { name: 'Tugline', integrationTimeoutMs: 500, startTimeoutMs: 200 });
+  const t0 = Date.now();
+  const res = await r.run({ ...CMD, timeoutMs: 60_000 });
+  assert.ok(res && Date.now() - t0 < 5000, 'returned promptly, not after the 60 s timeout');
+  assert.equal(res!.exitCode, null);
+  assert.match(res!.output, /did not start the command .*cancelled and did not run/);
+  assert.ok(f.terms[0].sent.includes('\x03'), 'the typed line was interrupted');
+  assert.equal(await r.run(CMD), undefined, 'the next command runs hidden (the caller spawns it)');
+  // control: a terminal that reports the start runs normally
+  const g = fakeTermApi({ integration: true, output: ['hi\r\n'], startEvents: 'fire' });
+  const ok = await new VisibleTerminalRunner(g.api, { name: 'Tugline', integrationTimeoutMs: 500, startTimeoutMs: 200 }).run(CMD);
+  assert.equal(ok!.exitCode, 0);
+  assert.equal(ok!.output, 'hi');
+});
 
 const CMD = { file: '/bin/bash', args: ['-c', 'echo hi'], cwd: '/ws', env: { PATH: '/usr/bin', TUGLINE: '1' }, command: 'echo hi', timeoutMs: 5000 };
 

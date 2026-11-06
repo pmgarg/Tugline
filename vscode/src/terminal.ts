@@ -18,6 +18,7 @@ export function vscodeTermApi(): TermApi {
     createTerminal: (o) => vscode.window.createTerminal({ name: o.name, cwd: o.cwd, env: o.env, strictEnv: o.strictEnv, isTransient: true, iconPath: new vscode.ThemeIcon('hubot') }) as any,
     onDidChangeTerminalShellIntegration: (cb) => vscode.window.onDidChangeTerminalShellIntegration((e) => cb(e as any)),
     onDidEndTerminalShellExecution: (cb) => vscode.window.onDidEndTerminalShellExecution((e) => cb(e as any)),
+    onDidStartTerminalShellExecution: (cb) => vscode.window.onDidStartTerminalShellExecution((e) => cb(e as any)),
     onDidCloseTerminal: (cb) => vscode.window.onDidCloseTerminal((t) => cb(t as any)),
   };
 }

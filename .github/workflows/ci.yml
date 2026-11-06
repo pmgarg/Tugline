@@ -208,13 +208,16 @@ jobs:
         # three failed scenarios are run once more, by name, with a warning; more than that fails the job.
         run: |
           set -o pipefail
-          if xvfb-run -a node test/runTest.mjs 2>&1 | tee e2e.log; then exit 0; fi
+          note() { grep -h '^\[e2e\] note:' e2e*.log 2>/dev/null | sed 's/^/::warning::/' || true; }
+          if xvfb-run -a node test/runTest.mjs 2>&1 | tee e2e.log; then note; exit 0; fi
           failed=$(grep -oP '^\[e2e\] ✗ \K[^:]+' e2e.log | sort -u)
           n=$(printf '%s\n' "$failed" | grep -c . || true)
           if [ "$n" -eq 0 ] || [ "$n" -gt 3 ]; then exit 1; fi
           echo "::warning::retrying $n VS Code scenario(s) once: $(echo $failed)"
           pat=$(printf '%s\n' "$failed" | sed 's/[][\.*^$()+?{}|/]/\\&/g' | paste -sd'|' -)
-          TUG_E2E_ONLY="^($pat)" xvfb-run -a node test/runTest.mjs
+          rc=0; TUG_E2E_ONLY="^($pat)" xvfb-run -a node test/runTest.mjs 2>&1 | tee e2e-retry.log || rc=$?
+          note
+          exit $rc
 
   package:
     name: build + package

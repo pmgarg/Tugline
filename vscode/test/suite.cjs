@@ -453,6 +453,17 @@ exports.run = async function () {
       // take longer than the runner's own wait on a loaded machine, and then that first command ran hidden), then assert.
       mock.set(scriptedReplies({ calls: [tc('bash', { command: 'true' })] }, { content: 'done' }));
       await P.sendPrompt('warm up', { chatId: chat.id });
+      // Some environments (GitHub's Ubuntu runners) bring shell integration up without command detection: the
+      // terminal accepts a command line and never starts it. The runner cancels it after its start timeout and runs
+      // commands hidden from then on. Check that fallback here, and say the visible path was not testable.
+      if (chat.runner && chat.runner.last && /did not start the command/.test(chat.runner.last.result.output)) {
+        mock.set(scriptedReplies({ calls: [tc('bash', { command: 'echo hi' })] }, { content: 'done' }));
+        await P.sendPrompt('say hi', { chatId: chat.id });
+        const fb = toolResults(mock.recent[1]).pop();
+        assert(/^\$ echo hi\nhi\n\[exit code 0,/.test(fb), `hidden fallback after the cancelled start: ${JSON.stringify(fb)}`);
+        console.log('[e2e] note: B10: this environment\'s terminal does not report command starts; the cancel-and-fall-back path was checked instead of the visible terminal');
+        return;
+      }
       const ohTerm = () => vscode.window.terminals.find((t) => t.name.startsWith('Tugline') && t.exitStatus === undefined);
       await waitFor(() => ohTerm(), 60000, 'the Tugline terminal');
       if (!ohTerm().shellIntegration)
