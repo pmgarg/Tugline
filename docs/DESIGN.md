@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | Author | Prateek Mohan Garg (with Claude) |
-| Status | v1.0: the eight workstreams of [SPEC.md](SPEC.md) merged (test results and how to run them: [TESTING.md](TESTING.md)) |
+| Status | v1.0: the eight workstreams merged (test results and how to run them: [TESTING.md](TESTING.md)) |
 | Date | 2026-10-28 |
 | Sources | The harness literature and source code (Claude Code docs, Codex, OpenCode, Cline, Aider, mini-swe-agent, SWE-agent, MCP 2026-07-28, ACP, agentskills.io) and live tests |
 
@@ -46,7 +46,7 @@ The EAG course has a lesson that shaped the whole design: *"When you read agenti
 | F11 | VS Code extension and a CLI with headless mode | User need |
 | F12 | Evaluation harness with raw records and a rescorable scorer | S18 |
 
-v1.0 adds features A1–I3: editing (A), VS Code (B), safety and recovery (C), agent core (D), browser (E), desktop (F), platform (G), automation (H) and evaluation (I). Each has acceptance checkpoints; the per-item status is in [SPEC_STATUS.md](SPEC_STATUS.md).
+v1.0 adds features A1–I3: editing (A), VS Code (B), safety and recovery (C), agent core (D), browser (E), desktop (F), platform (G), automation (H) and evaluation (I). Each has acceptance checkpoints;.
 
 ### Non-functional
 | # | Requirement | Source |

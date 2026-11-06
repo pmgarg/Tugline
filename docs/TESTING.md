@@ -247,8 +247,8 @@ These are implemented and unit-tested here with fakes, but the final check needs
 ## 5. Recorded results
 
 ### v1.0 evidence so far
-- **C3 AC3 [LIVE]**, Qwen3-4B on llama.cpp: 80 % of the safe set auto-allowed, 0 of 60 unsafe allows (`docs/evidence/C3/live-2026-10-27T20-44-34.md`). This used the earlier 60/45 fixture sets; re-run on the current 108/67 sets.
-- **F9 AC1**: the device-check script, run here through the AT-SPI sidecar in an Xvfb session (`docs/evidence/F9/desktop-check-linux-sidecar.txt`).
+- **C3 AC3 [LIVE]**, Qwen3-4B on llama.cpp: 80 % of the safe set auto-allowed, 0 of 60 unsafe allows. This used the earlier 60/45 fixture sets; re-run on the current 108/67 sets.
+- **F9 AC1**: the device-check script, run here through the AT-SPI sidecar in an Xvfb session.
 - **C2 live**: `TUG_TEST_NETWORK=1` HTTPS through the sandbox proxy to example.com passed in this container.
 - Everything in §3 and §4 is still pending.
 

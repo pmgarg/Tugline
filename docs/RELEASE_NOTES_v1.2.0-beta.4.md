@@ -68,7 +68,7 @@ Evidence is in `docs/evidence/live-2026-11-05-qwen3.8-27b/`.
 - **CLI:** `npm install -g ./tugline-1.2.0-beta.4.tgz`, then `tug doctor`.
 - **Model:** any OpenAI-compatible endpoint, for example Ollama, a vLLM or llama.cpp server, your company gateway, or OpenRouter:
   ```bash
-  export TUG_BASE_URL=https://openrouter.ai/api/v1 TUG_API_KEY=sk-or-... TUG_MODEL=<model id>
+  export TUG_BASE_URL=https://openrouter.ai/api/v1 TUG_API_KEY=sk-or-... TUG_MODEL=qwen/qwen3.8-27b
   tug -p "say hi"            # quick check
   ```
   In VS Code, run **Tugline: Configure LLM Endpoint**, choose **OpenRouter**, paste the key (it is stored in VS Code SecretStorage), then pick a model.

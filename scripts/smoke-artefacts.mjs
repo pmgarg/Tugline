@@ -153,7 +153,7 @@ async function smokeNpm(tgz, failures, log) {
       log(`tug --version → ${v.out.trim()}`);
       if (v.code !== 0 || v.out.trim() !== version) failures.push(`tug --version printed "${v.out.trim()}" (exit ${v.code}), expected ${version}`);
       const h = await oh(['--help']);
-      if (h.code !== 0 || !/oh doctor/.test(h.out) || !/oh eval/.test(h.out)) failures.push(`tug --help (exit ${h.code}) does not list the subcommands:\n${h.out.slice(0, 1500)}`);
+      if (h.code !== 0 || !/tug doctor/.test(h.out) || !/tug eval/.test(h.out)) failures.push(`tug --help (exit ${h.code}) does not list the subcommands:\n${h.out.slice(0, 1500)}`);
       else log('tug --help → lists doctor, eval, …');
       const d = await oh(['doctor']);
       const dout = strip(d.out);

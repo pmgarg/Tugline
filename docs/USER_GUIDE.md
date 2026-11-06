@@ -5,7 +5,7 @@ This guide is task-oriented. Each section says how to do something, which comman
 Contents
 1. [Install and connect a model](#1-install-and-connect-a-model)
 2. [Use the CLI](#2-use-the-cli)
-3. [`tug` subcommands](#3-oh-subcommands)
+3. [`tug` subcommands](#3-tug-subcommands)
 4. [Slash commands](#4-slash-commands)
 5. [Permissions, trust and safety](#5-permissions-trust-and-safety)
 6. [Editing](#6-editing)
@@ -445,11 +445,12 @@ Place a JSON file at `/etc/tugline/managed.json` (Linux), `/Library/Application 
   "protectedPaths": ["infra/**"],
   "allowMcpServers": ["github", "https://mcp.corp.example/"],
   "allowSkills": ["code-review", "python-bugfix"],
-  "disableAutoMode": true,          // forbids auto and yolo; "disableYoloMode": true forbids only yolo
+  "disableAutoMode": true,
   "maxCostUsdPerDay": 20,
   "forceSandbox": "auto"
 }
 ```
+`disableAutoMode` forbids both auto and yolo; set `"disableYoloMode": true` instead to forbid only yolo.
 The policy is applied after every other layer (files, env, flags, VS Code settings) and re-checked before each model call, so `/mode yolo` or a profile switch cannot escape it. Two files combine restrictively. An invalid file, an unknown field, or a missing `TUG_MANAGED_POLICY` target stops the harness. Attempts to loosen it are reported at session start.
 
 **Central policy, version pinning, org usage and audit (N22/N23).** The local file (installed by MDM) can also say:
