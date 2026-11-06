@@ -14,6 +14,8 @@ export interface ProbeReport {
   chatOk: boolean;
   nativeTools: boolean;
   textTools: boolean;
+  /** The text tool protocol was tried. It is only a fallback, so it is not tried when native tool calls work. */
+  textToolsTested: boolean;
   usageReported: boolean;
   reasoningSeen: boolean;
   latencyMs?: number;
@@ -34,7 +36,7 @@ const WEATHER_TOOL = {
 };
 
 export async function probeEndpoint(profile: ModelProfile, signal?: AbortSignal): Promise<ProbeReport> {
-  const r: ProbeReport = { reachable: false, chatOk: false, nativeTools: false, textTools: false, usageReported: false, reasoningSeen: false, recommendedToolMode: 'text', errors: [] };
+  const r: ProbeReport = { reachable: false, chatOk: false, nativeTools: false, textTools: false, textToolsTested: false, usageReported: false, reasoningSeen: false, recommendedToolMode: 'text', errors: [] };
   const base = new LLMClient({ ...profile, toolMode: 'native' });
   try {
     r.models = await base.listModels(signal);
@@ -65,12 +67,13 @@ export async function probeEndpoint(profile: ModelProfile, signal?: AbortSignal)
   try {
     const res = await base.complete({ messages: [{ role: 'user', content: 'What is the weather in Dubai? Use the get_weather tool.' }], tools: [WEATHER_TOOL], maxTokens: 1024, signal });
     r.nativeTools = res.toolCalls.some((c) => c.name === 'get_weather' && res.dialect === 'native' && !!c.args);
-    if (!r.nativeTools && res.toolCalls.some((c) => c.name === 'get_weather')) r.textTools = true;
+    if (!r.nativeTools && res.toolCalls.some((c) => c.name === 'get_weather')) r.textTools = r.textToolsTested = true;
   } catch (e) {
     r.errors.push(`native tools: ${(e as Error).message.slice(0, 200)}`);
   }
   if (!r.nativeTools) {
     try {
+      r.textToolsTested = true;
       const textClient = new LLMClient({ ...profile, toolMode: 'text' });
       const res = await textClient.complete({ messages: [{ role: 'system', content: 'You are a helpful assistant.' }, { role: 'user', content: 'What is the weather in Dubai? Use the get_weather tool.' }], tools: [WEATHER_TOOL], maxTokens: 1024, signal });
       r.textTools = r.textTools || res.toolCalls.some((c) => c.name === 'get_weather' && !!c.args);

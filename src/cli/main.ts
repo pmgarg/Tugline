@@ -577,7 +577,7 @@ async function cmdSetup(a: Args): Promise<void> {
 
 function printProbe(r: Awaited<ReturnType<typeof probeEndpoint>>): void {
   const ok = (b: boolean) => (b ? c.green('yes') : c.red('no'));
-  stdout.write(`  reachable:          ${ok(r.reachable)}\n  model listed:       ${r.modelListed === undefined ? 'n/a' : ok(r.modelListed)}\n  chat works:         ${ok(r.chatOk)}\n  native tool calls:  ${ok(r.nativeTools)}\n  text tool protocol: ${ok(r.textTools)}\n  usage reported:     ${ok(r.usageReported)}\n  reasoning channel:  ${r.reasoningSeen ? 'yes' : 'no'}\n  latency:            ${r.latencyMs ?? '?'} ms${r.tokensPerSecond ? ` (~${r.tokensPerSecond} tok/s incl. prompt)` : ''}\n  → recommended toolMode: ${c.bold(r.recommendedToolMode)}\n`);
+  stdout.write(`  reachable:          ${ok(r.reachable)}\n  model listed:       ${r.modelListed === undefined ? 'n/a' : ok(r.modelListed)}\n  chat works:         ${ok(r.chatOk)}\n  native tool calls:  ${ok(r.nativeTools)}\n  text tool protocol: ${r.textToolsTested ? ok(r.textTools) : 'not needed (native tool calls work)'}\n  usage reported:     ${ok(r.usageReported)}\n  reasoning channel:  ${r.reasoningSeen ? 'yes' : 'no'}\n  latency:            ${r.latencyMs ?? '?'} ms${r.tokensPerSecond ? ` (~${r.tokensPerSecond} tok/s incl. prompt)` : ''}\n  → recommended toolMode: ${c.bold(r.recommendedToolMode)}\n`);
   for (const e of r.errors) stdout.write(c.yellow(`  ! ${e}\n`));
 }
 

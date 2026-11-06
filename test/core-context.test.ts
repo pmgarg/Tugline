@@ -144,7 +144,7 @@ test('D4 AC3: probe results are cached and reused (the agent starts in the cache
   const cfg = testConfig(srv.url, NO_MAP);
   const profile = resolveProfile(cfg);
   let probes = 0;
-  const fake = async (): Promise<ProbeReport> => (probes++, { reachable: true, chatOk: true, nativeTools: false, textTools: true, usageReported: true, reasoningSeen: false, recommendedToolMode: 'text', errors: [] });
+  const fake = async (): Promise<ProbeReport> => (probes++, { reachable: true, chatOk: true, nativeTools: false, textTools: true, textToolsTested: true, usageReported: true, reasoningSeen: false, recommendedToolMode: 'text', errors: [] });
   const a = await cachedProbe(profile, cfg.homeDir, { probe: fake });
   const b = await cachedProbe(profile, cfg.homeDir, { probe: fake });
   assert.equal(probes, 1);

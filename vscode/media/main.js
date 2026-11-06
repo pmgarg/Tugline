@@ -833,7 +833,7 @@
       case 'probe': {
         const r = m.report;
         const yn = (ok, t) => `<span class="${ok ? 'add' : 'rem'}">${ic(ok ? 'check' : 'close')}${t}</span>`;
-        add(cid, 'notice probe', `${ic('plug')}<span>Connection test: ${yn(r.chatOk, 'chat')} ${yn(r.nativeTools, 'native tool calls')} ${yn(r.textTools, 'text tool calls')} in ${r.latencyMs ?? '?'} ms${r.errors.length ? '<br>' + esc(r.errors.join(' | ')) : ''}${m.ollama ? '<br>' + esc(m.ollama) : ''}</span>`);
+        add(cid, 'notice probe', `${ic('plug')}<span>Connection test: ${yn(r.chatOk, 'chat')} ${yn(r.nativeTools, 'native tool calls')} ${r.textToolsTested === false && r.nativeTools ? `<span title="The text protocol is only a fallback for models without native tool calls, so it was not tested.">${ic('dash')}text tool calls not needed</span>` : yn(r.textTools, 'text tool calls')} in ${r.latencyMs ?? '?'} ms${r.errors.length ? '<br>' + esc(r.errors.join(' | ')) : ''}${m.ollama ? '<br>' + esc(m.ollama) : ''}</span>`);
         break;
       }
       case 'onboarding':

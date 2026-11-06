@@ -656,7 +656,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       this.post({ type: 'probe', chatId: this.activeId, report: r, ollama });
       // not awaited: the progress notification closes when the probe is done, not when the message is dismissed
       if (r.chatOk) {
-        void vscode.window.showInformationMessage(`Tugline: connected to ${p.model}. Native tool calling: ${r.nativeTools ? 'yes' : 'no'}; text protocol: ${r.textTools ? 'yes' : 'no'}. Recommended tool mode: ${r.recommendedToolMode}.${ollama ? ` ${ollama}` : ''}`, 'Use recommended').then((pick) => {
+        void vscode.window.showInformationMessage(`Tugline: connected to ${p.model}. Native tool calling: ${r.nativeTools ? 'yes' : 'no'}; text protocol: ${r.textToolsTested ? (r.textTools ? 'yes' : 'no') : 'not needed'}. Recommended tool mode: ${r.recommendedToolMode}.${ollama ? ` ${ollama}` : ''}`, 'Use recommended').then((pick) => {
           if (pick) void vscode.workspace.getConfiguration('tugline').update('toolMode', r.recommendedToolMode, vscode.ConfigurationTarget.Global);
         });
       } else void vscode.window.showErrorMessage(`Tugline: connection failed — ${r.errors.join(' | ')}`);

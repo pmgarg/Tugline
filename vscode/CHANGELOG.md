@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.7 (pre-release): the connection test no longer reports an untested fallback as failing
+- When a model has native tool calls, the connection test showed "text tool calls ✗". The text protocol is only a fallback for models without native tool calls, and it was not tested in that case. It now shows "text tool calls not needed".
+
 ## 1.2.6 (pre-release): a chat website's address is explained, not "not valid JSON"
 - When the base URL is the address of a chat website, not its API, the server answers with a web page. Tugline used to show "Unexpected token '<', "<!doctype" is not valid JSON" under "Can't reach". It now says that the address is a web page, not an API, and names the sign-in page if it was redirected to one.
 - It also tries the usual API addresses on the same server (`/v1`, `/api`, `/api/v1`). If one answers, the setup card and **Configure LLM Endpoint** offer it as a button.

@@ -297,6 +297,8 @@ test('capability probe detects native tools vs text-only endpoints', async () =>
   await native.close();
   assert.equal(r1.nativeTools, true);
   assert.equal(r1.recommendedToolMode, 'native');
+  // the text protocol is a fallback: not tried when native works, and so not reported as failing
+  assert.equal(r1.textToolsTested, false);
   const textOnly = await startMockServer((body) => {
     if (body.tools) return { status: 400, errorBody: '{"error":"tools are not supported by this model"}' };
     if (/get_weather/.test(JSON.stringify(body.messages))) return { content: '<tool_call>{"name":"get_weather","arguments":{"city":"Dubai"}}</tool_call>' };
@@ -306,6 +308,7 @@ test('capability probe detects native tools vs text-only endpoints', async () =>
   await textOnly.close();
   assert.equal(r2.nativeTools, false);
   assert.equal(r2.textTools, true);
+  assert.equal(r2.textToolsTested, true);
   assert.equal(r2.recommendedToolMode, 'text');
 });
 
