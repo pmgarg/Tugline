@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { loadSuite } from '../src/core/eval/runner.js';
 import { editMetrics, renderEditMetrics, INTEGRITY_PREFIX } from '../src/core/edit/metrics.js';
 import { checkTask } from '../evals/editing/check.mts';
@@ -28,9 +28,18 @@ test('A9: the suite has ≥ 30 tasks over Python, TS, Go, Java and JSON/YAML, ea
   assert.ok(Object.keys(suite.arms).length >= 1);
 });
 
-test('A9: one task per language is real (fails unfixed), solvable (reference passes) and detects corruption', () => {
+test('A9: one task per language is real (fails unfixed), solvable (reference passes) and detects corruption', (ctx) => {
   const { tasks } = loadSuite(SUITE);
+  // The TypeScript tasks check with `node tests/check.ts`, which needs a Node that runs .ts files (22.6+ / 23.6+).
+  const tsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oh-a9-ts-'));
+  fs.writeFileSync(path.join(tsDir, 'probe.ts'), 'const n: number = 1; if (n !== 1) process.exit(1);\n');
+  const nodeRunsTs = spawnSync(process.execPath, [path.join(tsDir, 'probe.ts')], { stdio: 'ignore' }).status === 0;
+  fs.rmSync(tsDir, { recursive: true, force: true });
   for (const id of ['py02-crlf', 'ts04-template-escapes', 'go05-crlf-stack', 'java03-escapes', 'cfg03-yaml-list']) {
+    if (id.startsWith('ts') && !nodeRunsTs) {
+      ctx.diagnostic(`${id} skipped: Node ${process.version} cannot run .ts files`);
+      continue;
+    }
     const t = tasks.find((x) => x.id === id)!;
     assert.deepEqual(checkTask(t.dir, t.acceptance), [], id);
   }
