@@ -1,0 +1,12 @@
+services:
+  web:
+    image: shop/web:1.5
+    ports:
+      - "80:8080"
+    environment:
+      - LOG_LEVEL=info
+  worker:
+    image: shop/worker:1.5
+    environment:
+      - LOG_LEVEL=info
+      - QUEUE=orders

@@ -1,0 +1,11 @@
+defaults: &defaults
+  retries: 5
+  timeout: 10
+
+production:
+  <<: *defaults
+  timeout: 30
+
+staging:
+  <<: *defaults
+  timeout: 20

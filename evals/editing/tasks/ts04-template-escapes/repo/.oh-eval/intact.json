@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "src/greet.ts",
+   "original": "ZXhwb3J0IGZ1bmN0aW9uIGdyZWV0KG5hbWU6IHN0cmluZywgY291bnQ6IG51bWJlcik6IHN0cmluZyB7CiAgY29uc3Qgbm91biA9IGNvdW50ID09PSAxID8gJ21lc3NhZ2UnIDogJ21lc3NhZ2VzJzsKICByZXR1cm4gYEhlbGxvLCAke25hbWV9ISBZb3UgaGF2ZSAke2NvdW50fSBuZXcgJHtub3VufS5cbmA7Cn0KCmV4cG9ydCBmdW5jdGlvbiBzaG91dChzOiBzdHJpbmcpOiBzdHJpbmcgewogIHJldHVybiBgJHtzLnRvVXBwZXJDYXNlKCl9IWA7Cn0K",
+   "windows": [
+    [
+     0,
+     6
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "src/version.ts",
+   "original": "LyoqICIxLjIiIG9yICIxLjIuMyIgKG1ham9yLm1pbm9yWy5wYXRjaF0pLiAqLwpleHBvcnQgZnVuY3Rpb24gaXNWZXJzaW9uKHM6IHN0cmluZyk6IGJvb2xlYW4gewogIHJldHVybiAvXlxkK1wuXGQrJC8udGVzdChzKTsKfQoKZXhwb3J0IGNvbnN0IFNFUCA9ICdcXCc7Cg==",
+   "windows": [
+    [
+     0,
+     6
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

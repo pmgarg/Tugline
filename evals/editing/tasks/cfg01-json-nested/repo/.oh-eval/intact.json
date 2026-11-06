@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "config/app.json",
+   "original": "ewogICJuYW1lIjogInNob3AiLAogICJzZXJ2ZXIiOiB7CiAgICAiaG9zdCI6ICIwLjAuMC4wIiwKICAgICJwb3J0IjogODA4MCwKICAgICJ0bHMiOiB7CiAgICAgICJlbmFibGVkIjogZmFsc2UsCiAgICAgICJjZXJ0IjogIiIKICAgIH0KICB9LAogICJmZWF0dXJlcyI6IFsiY2FydCIsICJzZWFyY2giXQp9Cg==",
+   "windows": [
+    [
+     3,
+     11
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

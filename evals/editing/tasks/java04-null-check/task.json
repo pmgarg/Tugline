@@ -1,0 +1,22 @@
+{
+  "id": "java04-null-check",
+  "version": 1,
+  "type": "edit",
+  "language": "java",
+  "stress": "inserting a guard inside a loop",
+  "behaviour": "src/Names.java: initials crashes on null or empty names; they must be skipped, as documented. Fix it (check: `javac -d .oh-build src/*.java tests/*.java && java -ea -cp .oh-build Check`). Do not modify the tests.",
+  "prompt": "src/Names.java: initials crashes on null or empty names; they must be skipped, as documented. Fix it (check: `javac -d .oh-build src/*.java tests/*.java && java -ea -cp .oh-build Check`). Do not modify the tests.",
+  "acceptance": [
+    "rm -rf .oh-build && javac -d .oh-build src/*.java tests/*.java && java -ea -cp .oh-build Check",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "javac",
+    "Check"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

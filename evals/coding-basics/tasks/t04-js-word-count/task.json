@@ -1,0 +1,14 @@
+{
+  "id": "t04-js-word-count",
+  "version": 1,
+  "type": "source_repair",
+  "behaviour": "wordCount(text) counts words separated by any run of whitespace; empty or blank text has 0 words.",
+  "prompt": "wordCount() in text.js over-counts when words are separated by several spaces, tabs or newlines, and returns 1 for an empty string. Fix text.js so `node --test` passes. Do not modify the tests.",
+  "acceptance": [
+    "node --test",
+    "node -e \"const {wordCount}=require('./text.js'); if (wordCount('  a\\t b\\n\\nc  ')!==3||wordCount('')!==0||wordCount('   ')!==0) process.exit(1)\""
+  ],
+  "verification": ["node --test"],
+  "protected": ["test/**"],
+  "timeout_s": 1500
+}

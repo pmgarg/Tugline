@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Checkout</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<main>
+<h1>Checkout</h1>
+<p>Total: $42.00</p>
+<form id="pay" aria-label="Payment">
+  <p><label for="cc">Card number</label> <input id="cc" name="cardnumber" autocomplete="cc-number" inputmode="numeric"></p>
+  <p><label for="exp">Expiry (MM/YY)</label> <input id="exp" autocomplete="cc-exp"></p>
+  <p><label for="cvc">CVC</label> <input id="cvc" autocomplete="cc-csc"></p>
+  <p><label for="coupon">Coupon code</label> <input id="coupon"></p>
+  <p><button id="apply" type="button">Apply coupon</button> <button id="paynow" type="submit">Pay now</button></p>
+</form>
+<div id="paid" class="status" role="status"></div>
+</main>
+<script>
+document.getElementById('apply').onclick = () => document.getElementById('paid').textContent = 'Coupon ' + document.getElementById('coupon').value + ' applied';
+document.getElementById('pay').addEventListener('submit', (e) => { e.preventDefault(); document.getElementById('paid').textContent = 'PAYMENT SUBMITTED'; });
+</script>
+</body></html>

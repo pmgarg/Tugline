@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "stack.go",
+   "original": "cGFja2FnZSBjYWxjDQoNCnR5cGUgU3RhY2sgc3RydWN0eyBpdGVtcyBbXWludCB9DQoNCmZ1bmMgKHMgKlN0YWNrKSBQdXNoKHggaW50KSB7IHMuaXRlbXMgPSBhcHBlbmQocy5pdGVtcywgeCkgfQ0KDQovLyBQb3AgcmVtb3ZlcyBhbmQgcmV0dXJucyB0aGUgdG9wIChtb3N0IHJlY2VudGx5IHB1c2hlZCkgaXRlbTsgb2sgaXMgZmFsc2Ugd2hlbiBlbXB0eS4NCmZ1bmMgKHMgKlN0YWNrKSBQb3AoKSAoaW50LCBib29sKSB7DQoJaWYgbGVuKHMuaXRlbXMpID09IDAgew0KCQlyZXR1cm4gMCwgZmFsc2UNCgl9DQoJeCA6PSBzLml0ZW1zWzBdDQoJcy5pdGVtcyA9IHMuaXRlbXNbMTpdDQoJcmV0dXJuIHgsIHRydWUNCn0NCg==",
+   "windows": [
+    [
+     8,
+     16
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

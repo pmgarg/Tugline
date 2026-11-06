@@ -1,0 +1,22 @@
+{
+  "id": "java06-generics",
+  "version": 1,
+  "type": "edit",
+  "language": "java",
+  "stress": "generic method",
+  "behaviour": "src/Lists.java: filter returns the elements that should be dropped instead of the ones to keep. Fix it (check: `javac -d .oh-build src/*.java tests/*.java && java -ea -cp .oh-build Check`). Do not modify the tests.",
+  "prompt": "src/Lists.java: filter returns the elements that should be dropped instead of the ones to keep. Fix it (check: `javac -d .oh-build src/*.java tests/*.java && java -ea -cp .oh-build Check`). Do not modify the tests.",
+  "acceptance": [
+    "rm -rf .oh-build && javac -d .oh-build src/*.java tests/*.java && java -ea -cp .oh-build Check",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "javac",
+    "Check"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

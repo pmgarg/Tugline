@@ -1,0 +1,21 @@
+{
+  "id": "cfg03-yaml-list",
+  "version": 1,
+  "type": "edit",
+  "language": "config",
+  "stress": "indentation-sensitive YAML, two edits",
+  "behaviour": "deploy.yaml: bump both images from 1.4 to 1.5, and add QUEUE=orders to the worker environment (after LOG_LEVEL). `python3 tests/check.py` must pass; do not modify the tests.",
+  "prompt": "deploy.yaml: bump both images from 1.4 to 1.5, and add QUEUE=orders to the worker environment (after LOG_LEVEL). `python3 tests/check.py` must pass; do not modify the tests.",
+  "acceptance": [
+    "python3 tests/check.py",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "tests/check.py"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

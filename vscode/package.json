@@ -1,0 +1,1120 @@
+{
+  "name": "tugline",
+  "displayName": "Tugline: coding agent for any model",
+  "description": "A coding agent that runs on the model you choose (Ollama, LM Studio, vLLM, your company server or any OpenAI-compatible API). Sandboxed commands, reviewable edits, and runs verified by your own tests.",
+  "version": "1.2.4",
+  "publisher": "tugline",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pmgarg/Tugline"
+  },
+  "engines": {
+    "vscode": "^1.93.0"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Programming Languages",
+    "Machine Learning"
+  ],
+  "keywords": [
+    "agent",
+    "coding agent",
+    "ai",
+    "llm",
+    "local llm",
+    "ollama",
+    "lm studio",
+    "vllm",
+    "openrouter",
+    "qwen",
+    "mcp",
+    "sandbox",
+    "openai compatible",
+    "autonomous"
+  ],
+  "icon": "media/icon.png",
+  "main": "./dist/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "tugline",
+          "title": "Tugline",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "tugline": [
+        {
+          "type": "webview",
+          "id": "tugline.chat",
+          "name": "Agent"
+        },
+        {
+          "id": "tugline.agents",
+          "name": "Agents",
+          "visibility": "collapsed",
+          "type": "tree"
+        },
+        {
+          "id": "tugline.history",
+          "name": "History",
+          "visibility": "collapsed",
+          "type": "tree"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "tugline.newChat",
+        "title": "Tugline: New Chat",
+        "icon": "$(add)"
+      },
+      {
+        "command": "tugline.stop",
+        "title": "Tugline: Stop",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "tugline.undo",
+        "title": "Tugline: Undo Last Agent Edit",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "tugline.setApiKey",
+        "title": "Tugline: Set API Key"
+      },
+      {
+        "command": "tugline.configure",
+        "title": "Tugline: Configure LLM Endpoint",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "tugline.testConnection",
+        "title": "Tugline: Test LLM Connection"
+      },
+      {
+        "command": "tugline.addSelection",
+        "title": "Tugline: Add Selection to Chat"
+      },
+      {
+        "command": "tugline.openConfig",
+        "title": "Tugline: Open Project Config (.tugline/config.json)"
+      },
+      {
+        "command": "tugline.showLog",
+        "title": "Tugline: Show Log"
+      },
+      {
+        "command": "tugline.clearChat",
+        "title": "Tugline: Clear Chat",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "tugline.emergencyStop",
+        "title": "Tugline: Emergency Stop (all agents and automation)",
+        "icon": "$(stop-circle)"
+      },
+      {
+        "command": "tugline.resumeAutomation",
+        "title": "Tugline: Resume Automation (after an emergency stop)"
+      },
+      {
+        "command": "tugline.inlineEdit",
+        "title": "Tugline: Edit Selection with AI…",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "tugline.inlineAccept",
+        "title": "Tugline: Accept Inline Edit"
+      },
+      {
+        "command": "tugline.inlineReject",
+        "title": "Tugline: Reject Inline Edit"
+      },
+      {
+        "command": "tugline.review.keepAll",
+        "title": "Tugline: Keep All Agent Changes",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "tugline.review.undoAll",
+        "title": "Tugline: Undo All Agent Changes",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "tugline.review.keepFile",
+        "title": "Tugline: Keep Agent Changes in This File",
+        "icon": "$(check)"
+      },
+      {
+        "command": "tugline.review.undoFile",
+        "title": "Tugline: Undo Agent Changes in This File",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "tugline.review.openAll",
+        "title": "Tugline: Review All Agent Changes",
+        "icon": "$(diff-multiple)"
+      },
+      {
+        "command": "tugline.review.keepHunk",
+        "title": "Tugline: Keep Change"
+      },
+      {
+        "command": "tugline.review.undoHunk",
+        "title": "Tugline: Undo Change"
+      },
+      {
+        "command": "tugline.openReplay",
+        "title": "Tugline: Open Browser Run Replay…"
+      },
+      {
+        "command": "tugline.history.resume",
+        "title": "Resume Chat",
+        "icon": "$(debug-continue)"
+      },
+      {
+        "command": "tugline.history.rename",
+        "title": "Rename…",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "tugline.history.delete",
+        "title": "Delete (move to trash)",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "tugline.history.search",
+        "title": "Search Chats…",
+        "icon": "$(search)"
+      },
+      {
+        "command": "tugline.history.clearSearch",
+        "title": "Clear Search",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "tugline.history.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "tugline.showView",
+        "title": "Tugline: Show View"
+      },
+      {
+        "command": "tugline.agents.newWorktreeSession",
+        "title": "Tugline: New Session in a Worktree",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "tugline.agents.refresh",
+        "title": "Tugline: Refresh Agents",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "tugline.agents.open",
+        "title": "Open Session",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "tugline.agents.answer",
+        "title": "Answer Pending Approval",
+        "icon": "$(question)"
+      },
+      {
+        "command": "tugline.agents.stop",
+        "title": "Stop Session",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "tugline.agents.merge",
+        "title": "Merge Session Branch",
+        "icon": "$(git-merge)"
+      },
+      {
+        "command": "tugline.agents.discard",
+        "title": "Discard Session Worktree",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "tugline.reviewComments.add",
+        "title": "Add Comment for the Agent"
+      },
+      {
+        "command": "tugline.reviewComments.delete",
+        "title": "Delete Comment",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "tugline.reviewComments.send",
+        "title": "Tugline: Send Review Comments to the Agent",
+        "icon": "$(send)"
+      },
+      {
+        "command": "tugline.reviewComments.clear",
+        "title": "Tugline: Discard Review Comments"
+      },
+      {
+        "command": "tugline.preview.open",
+        "title": "Tugline: Open Preview (pick elements for the chat)",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "tugline.preview.pick",
+        "title": "Tugline: Pick Element in Preview"
+      },
+      {
+        "command": "tugline.nes.trigger",
+        "title": "Tugline: Suggest Next Edit"
+      },
+      {
+        "command": "tugline.nes.accept",
+        "title": "Tugline: Accept Next Edit (jump, then apply)"
+      },
+      {
+        "command": "tugline.nes.dismiss",
+        "title": "Tugline: Dismiss Next Edit"
+      },
+      {
+        "command": "tugline.voice.toggle",
+        "title": "Tugline: Voice Input (push to talk)",
+        "icon": "$(mic)"
+      },
+      {
+        "command": "tugline.openWiki",
+        "title": "Tugline: Open Wiki"
+      },
+      {
+        "command": "tugline.generateDocs",
+        "title": "Tugline: Generate Docs for Selection"
+      },
+      {
+        "command": "tugline.autoApprove",
+        "title": "Tugline: Auto-approve…",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "tugline.arena.open",
+        "title": "Tugline: Open Arena (models and agents side by side)",
+        "icon": "$(versions)"
+      },
+      {
+        "command": "tugline.board.open",
+        "title": "Tugline: Open Task Board (one worktree per card)",
+        "icon": "$(project)"
+      },
+      {
+        "command": "tugline.history.favorite",
+        "title": "Star / Unstar",
+        "category": "Tugline",
+        "icon": "$(star)"
+      },
+      {
+        "command": "tugline.history.export",
+        "title": "Export…",
+        "category": "Tugline",
+        "icon": "$(export)"
+      },
+      {
+        "command": "tugline.history.deleteAll",
+        "title": "Delete All Sessions…",
+        "category": "Tugline",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "tugline.history.size",
+        "title": "Tugline: Show History Size"
+      },
+      {
+        "command": "tugline.addTerminalOutput",
+        "title": "Add Terminal Output to Tugline Chat",
+        "category": "Tugline"
+      },
+      {
+        "command": "tugline.focusChat",
+        "title": "Tugline: Focus Chat Input"
+      },
+      {
+        "command": "tugline.explainCode",
+        "title": "Tugline: Explain Code"
+      },
+      {
+        "command": "tugline.improveCode",
+        "title": "Tugline: Improve Code"
+      },
+      {
+        "command": "tugline.fixWithAgent",
+        "title": "Tugline: Fix with Tugline"
+      },
+      {
+        "command": "tugline.generateCommitMessage",
+        "title": "Tugline: Generate Commit Message",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "tugline.notebook.explainCell",
+        "title": "Tugline: Explain Cell",
+        "icon": "$(question)"
+      },
+      {
+        "command": "tugline.notebook.improveCell",
+        "title": "Tugline: Improve Cell",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "tugline.notebook.generateCell",
+        "title": "Tugline: Generate Cell",
+        "icon": "$(add)"
+      },
+      {
+        "command": "tugline.checkpoints.compare",
+        "title": "Tugline: Compare Checkpoint with Current Files"
+      },
+      {
+        "command": "tugline.copyConversation",
+        "title": "Tugline: Copy Conversation (Markdown)"
+      },
+      {
+        "command": "tugline.toggleFavoriteModel",
+        "title": "Tugline: Star / Unstar a Model"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "tugline.newChat",
+          "when": "view == tugline.chat",
+          "group": "navigation@1"
+        },
+        {
+          "command": "tugline.undo",
+          "when": "view == tugline.chat",
+          "group": "navigation@1"
+        },
+        {
+          "command": "tugline.configure",
+          "when": "view == tugline.chat",
+          "group": "navigation@2"
+        },
+        {
+          "command": "tugline.history.search",
+          "when": "view == tugline.history",
+          "group": "navigation@1"
+        },
+        {
+          "command": "tugline.history.clearSearch",
+          "when": "view == tugline.history && tugline.historyFiltered",
+          "group": "navigation@2"
+        },
+        {
+          "command": "tugline.history.refresh",
+          "when": "view == tugline.history",
+          "group": "navigation@3"
+        },
+        {
+          "command": "tugline.emergencyStop",
+          "when": "view == tugline.chat",
+          "group": "navigation@3"
+        },
+        {
+          "command": "tugline.agents.newWorktreeSession",
+          "when": "view == tugline.agents",
+          "group": "navigation@1"
+        },
+        {
+          "command": "tugline.agents.refresh",
+          "when": "view == tugline.agents",
+          "group": "navigation@2"
+        },
+        {
+          "command": "tugline.history.deleteAll",
+          "when": "view == tugline.history",
+          "group": "9_danger"
+        },
+        {
+          "command": "tugline.autoApprove",
+          "when": "view == tugline.chat",
+          "group": "navigation@5"
+        },
+        {
+          "command": "tugline.board.open",
+          "when": "view == tugline.agents",
+          "group": "navigation@1"
+        },
+        {
+          "command": "tugline.arena.open",
+          "when": "view == tugline.agents",
+          "group": "navigation@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "tugline.addSelection",
+          "when": "editorHasSelection",
+          "group": "tugline@1"
+        },
+        {
+          "command": "tugline.inlineEdit",
+          "group": "tugline@0"
+        },
+        {
+          "command": "tugline.generateDocs",
+          "group": "tugline@2"
+        },
+        {
+          "command": "tugline.explainCode",
+          "group": "tugline@2"
+        },
+        {
+          "command": "tugline.improveCode",
+          "group": "tugline@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "tugline.history.rename",
+          "when": "view == tugline.history && viewItem =~ /^tugline\\.session/",
+          "group": "inline@1"
+        },
+        {
+          "command": "tugline.history.delete",
+          "when": "view == tugline.history && viewItem =~ /^tugline\\.session/",
+          "group": "inline@2"
+        },
+        {
+          "command": "tugline.agents.answer",
+          "when": "view == tugline.agents && viewItem =~ /\\.blocked/",
+          "group": "inline@1"
+        },
+        {
+          "command": "tugline.agents.stop",
+          "when": "view == tugline.agents && viewItem =~ /\\.running/",
+          "group": "inline@2"
+        },
+        {
+          "command": "tugline.agents.merge",
+          "when": "view == tugline.agents && viewItem =~ /\\.worktree/",
+          "group": "inline@3"
+        },
+        {
+          "command": "tugline.agents.discard",
+          "when": "view == tugline.agents && viewItem =~ /\\.worktree/",
+          "group": "inline@4"
+        },
+        {
+          "command": "tugline.history.favorite",
+          "when": "view == tugline.history && viewItem =~ /^tugline\\.session/",
+          "group": "inline@0"
+        },
+        {
+          "command": "tugline.history.export",
+          "when": "view == tugline.history && viewItem =~ /^tugline\\.session/",
+          "group": "1_manage@5"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "tugline.review.keepFile",
+          "when": "tugline.hasPending",
+          "group": "navigation@90"
+        },
+        {
+          "command": "tugline.review.undoFile",
+          "when": "tugline.hasPending",
+          "group": "navigation@91"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "tugline.review.keepHunk",
+          "when": "false"
+        },
+        {
+          "command": "tugline.review.undoHunk",
+          "when": "false"
+        },
+        {
+          "command": "tugline.history.resume",
+          "when": "false"
+        },
+        {
+          "command": "tugline.history.rename",
+          "when": "false"
+        },
+        {
+          "command": "tugline.history.delete",
+          "when": "false"
+        },
+        {
+          "command": "tugline.showView",
+          "when": "false"
+        },
+        {
+          "command": "tugline.inlineAccept",
+          "when": "tugline.inlineDiffVisible"
+        },
+        {
+          "command": "tugline.inlineReject",
+          "when": "tugline.inlineDiffVisible"
+        },
+        {
+          "command": "tugline.agents.open",
+          "when": "false"
+        },
+        {
+          "command": "tugline.agents.answer",
+          "when": "false"
+        },
+        {
+          "command": "tugline.agents.stop",
+          "when": "false"
+        },
+        {
+          "command": "tugline.agents.merge",
+          "when": "false"
+        },
+        {
+          "command": "tugline.agents.discard",
+          "when": "false"
+        },
+        {
+          "command": "tugline.agents.refresh",
+          "when": "false"
+        },
+        {
+          "command": "tugline.reviewComments.add",
+          "when": "false"
+        },
+        {
+          "command": "tugline.reviewComments.delete",
+          "when": "false"
+        },
+        {
+          "command": "tugline.nes.accept",
+          "when": "tugline.nesVisible"
+        },
+        {
+          "command": "tugline.nes.dismiss",
+          "when": "tugline.nesVisible"
+        },
+        {
+          "command": "tugline.history.favorite",
+          "when": "false"
+        },
+        {
+          "command": "tugline.history.export",
+          "when": "false"
+        }
+      ],
+      "comments/commentThread/context": [
+        {
+          "command": "tugline.reviewComments.add",
+          "group": "inline",
+          "when": "commentController == tugline.review"
+        }
+      ],
+      "comments/commentThread/title": [
+        {
+          "command": "tugline.reviewComments.send",
+          "group": "navigation@1",
+          "when": "commentController == tugline.review && tugline.reviewCommentCount > 0"
+        },
+        {
+          "command": "tugline.reviewComments.delete",
+          "group": "navigation@2",
+          "when": "commentController == tugline.review && !commentThreadIsEmpty"
+        }
+      ],
+      "terminal/context": [
+        {
+          "command": "tugline.addTerminalOutput",
+          "group": "tugline"
+        }
+      ],
+      "scm/title": [
+        {
+          "command": "tugline.generateCommitMessage",
+          "when": "scmProvider == git",
+          "group": "navigation"
+        }
+      ],
+      "notebook/cell/title": [
+        {
+          "command": "tugline.notebook.explainCell",
+          "group": "inline/cell@1"
+        },
+        {
+          "command": "tugline.notebook.improveCell",
+          "group": "inline/cell@2"
+        }
+      ],
+      "notebook/toolbar": [
+        {
+          "command": "tugline.notebook.generateCell",
+          "group": "navigation/add@9"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "tugline.addSelection",
+        "key": "ctrl+alt+l",
+        "mac": "cmd+alt+l",
+        "when": "editorHasSelection"
+      },
+      {
+        "command": "tugline.inlineEdit",
+        "key": "ctrl+alt+k",
+        "mac": "cmd+alt+k",
+        "when": "editorTextFocus && !editorReadonly"
+      },
+      {
+        "command": "tugline.inlineAccept",
+        "key": "ctrl+shift+enter",
+        "mac": "cmd+shift+enter",
+        "when": "editorTextFocus && tugline.inlineDiffVisible"
+      },
+      {
+        "command": "tugline.inlineReject",
+        "key": "ctrl+shift+backspace",
+        "mac": "cmd+shift+backspace",
+        "when": "editorTextFocus && tugline.inlineDiffVisible"
+      },
+      {
+        "command": "tugline.emergencyStop",
+        "key": "ctrl+alt+shift+escape"
+      },
+      {
+        "command": "tugline.nes.accept",
+        "key": "tab",
+        "when": "tugline.nesVisible && editorTextFocus && !inlineSuggestionVisible && !suggestWidgetVisible && !inSnippetMode"
+      },
+      {
+        "command": "tugline.nes.dismiss",
+        "key": "escape",
+        "when": "tugline.nesVisible && editorTextFocus"
+      },
+      {
+        "command": "tugline.voice.toggle",
+        "key": "ctrl+alt+v",
+        "mac": "cmd+alt+v",
+        "when": "config.tugline.voice.enabled"
+      },
+      {
+        "command": "tugline.focusChat",
+        "key": "ctrl+'",
+        "mac": "cmd+'",
+        "when": "!editorHasSelection"
+      }
+    ],
+    "configuration": {
+      "title": "Tugline",
+      "properties": {
+        "tugline.baseUrl": {
+          "type": "string",
+          "default": "http://localhost:11434/v1",
+          "markdownDescription": "OpenAI-compatible base URL of your LLM, e.g. `http://localhost:11434/v1` (Ollama), `http://localhost:1234/v1` (LM Studio), `http://gpu-server:8000/v1` (vLLM), `https://openrouter.ai/api/v1`. (User setting only: a workspace cannot redirect where your API key is sent.)",
+          "scope": "application"
+        },
+        "tugline.model": {
+          "type": "string",
+          "default": "qwen3-coder:30b",
+          "description": "Model name as the endpoint expects it."
+        },
+        "tugline.contextWindow": {
+          "type": "number",
+          "default": 32768,
+          "description": "Context window of the model in tokens (used to decide when to compact)."
+        },
+        "tugline.maxOutputTokens": {
+          "type": "number",
+          "default": 8192
+        },
+        "tugline.temperature": {
+          "type": "number",
+          "default": 0.2
+        },
+        "tugline.toolMode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "native",
+            "text"
+          ],
+          "default": "auto",
+          "markdownDescription": "`native` = OpenAI tool calling; `text` = tool calls written as text (for servers/models without tool support); `auto` = detect."
+        },
+        "tugline.vision": {
+          "type": "boolean",
+          "default": false,
+          "description": "The model accepts images (screenshots are shown to it)."
+        },
+        "tugline.extraHeaders": {
+          "type": "object",
+          "default": {},
+          "description": "Extra HTTP headers for your company gateway.",
+          "scope": "application"
+        },
+        "tugline.permissionMode": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "acceptEdits",
+            "plan",
+            "auto",
+            "yolo"
+          ],
+          "default": "ask",
+          "markdownDescription": "`ask`: approve edits/commands. `acceptEdits`: edits auto-approved. `plan`: read-only planning. `auto`: a safety classifier approves routine commands; risky ones (secrets, network uploads, publishing, persistence, destructive) always ask you. `yolo`: no prompts and no classifier except for dangerous commands (before v1.2 this was called `auto`).",
+          "scope": "application"
+        },
+        "tugline.promptStyle": {
+          "type": "string",
+          "enum": [
+            "full",
+            "compact"
+          ],
+          "default": "full",
+          "description": "Use 'compact' for small local models."
+        },
+        "tugline.shellMode": {
+          "type": "string",
+          "enum": [
+            "shell",
+            "allowlist"
+          ],
+          "default": "shell",
+          "description": "'allowlist' runs commands without a shell, only allowlisted programs.",
+          "scope": "application"
+        },
+        "tugline.protectedPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            ".git/**"
+          ],
+          "description": "Globs the agent may never modify (e.g. tests/**, .github/**)."
+        },
+        "tugline.autoValidate": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run an independent validator subagent before the agent finishes coding tasks.",
+          "scope": "application"
+        },
+        "tugline.webSearchProvider": {
+          "type": "string",
+          "enum": [
+            "duckduckgo",
+            "searxng",
+            "brave",
+            "tavily",
+            "none"
+          ],
+          "default": "duckduckgo",
+          "scope": "application"
+        },
+        "tugline.searxngUrl": {
+          "type": "string",
+          "default": "",
+          "scope": "application"
+        },
+        "tugline.mcpServers": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "MCP servers, same shape as `.mcp.json`: `{ \"playwright\": { \"command\": \"npx\", \"args\": [\"@playwright/mcp@latest\"] } }`",
+          "scope": "application"
+        },
+        "tugline.maxTurns": {
+          "type": "number",
+          "default": 60,
+          "scope": "application"
+        },
+        "tugline.autoSave": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Save a file after the agent edits it, unless you had unsaved changes in it (then the edit stays in the editor buffer). Agent edits are always undoable with Ctrl+Z."
+        },
+        "tugline.visibleTerminal": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "markdownDescription": "Run the agent's commands in a visible **Tugline** terminal (needs shell integration; falls back to a hidden process). Background jobs open in their own terminals. The OS sandbox applies either way."
+        },
+        "tugline.planProfile": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Model profile (from `~/.tugline/config.json`) used while in **Plan** mode."
+        },
+        "tugline.inlineEditProfile": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Model profile for inline edits (Ctrl+Shift+K). Empty = the chat's model."
+        },
+        "tugline.visionProfile": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "A vision-capable profile used to describe pasted images when the chat model has no vision."
+        },
+        "tugline.ocr": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "OCR pasted images with `tesseract` when the chat model has no vision."
+        },
+        "tugline.notifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Notify when a long run ends or the agent waits for you while the panel is hidden."
+        },
+        "tugline.notifyAfterSeconds": {
+          "type": "number",
+          "default": 30,
+          "description": "Runs longer than this notify when they end."
+        },
+        "tugline.autocomplete.enabled": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Tab autocomplete with a fill-in-the-middle model (opt-in). Needs an endpoint with `/completions` FIM support or llama.cpp `/infill`.",
+          "scope": "application"
+        },
+        "tugline.autocomplete.profile": {
+          "type": "string",
+          "default": "",
+          "description": "Profile with the FIM endpoint (empty = the main endpoint).",
+          "scope": "application"
+        },
+        "tugline.autocomplete.endpoint": {
+          "type": "string",
+          "enum": [
+            "completions",
+            "llama-infill"
+          ],
+          "default": "completions",
+          "markdownDescription": "`completions` = OpenAI-style `/v1/completions` with a raw FIM prompt; `llama-infill` = llama.cpp `/infill`.",
+          "scope": "application"
+        },
+        "tugline.autocomplete.template": {
+          "type": "string",
+          "enum": [
+            "qwen",
+            "codestral",
+            "deepseek",
+            "suffix"
+          ],
+          "default": "qwen",
+          "markdownDescription": "FIM prompt template for `/completions` (`suffix` sends the OpenAI `suffix` field instead).",
+          "scope": "application"
+        },
+        "tugline.autocomplete.debounceMs": {
+          "type": "number",
+          "default": 250
+        },
+        "tugline.autocomplete.maxTokens": {
+          "type": "number",
+          "default": 128
+        },
+        "tugline.browser.enabled": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "markdownDescription": "Give the agent the `browser_*` tools (headless Chromium via Playwright, works with text-only models). Off by default."
+        },
+        "tugline.approver.enabled": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "markdownDescription": "Let a small model approve routine actions that would otherwise ask you (a deterministic filter always escalates destructive, credential, exfiltration and publishing actions). Off by default."
+        },
+        "tugline.approver.profile": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Profile for the approver model (empty = small or main model)."
+        },
+        "tugline.preview.allowHosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "application",
+          "description": "Hosts the live preview may open besides loopback (localhost, 127.0.0.1, ::1, *.localhost), e.g. \"dev.mycorp.internal\" or \"*.test\". Every request the page makes still passes the SSRF guard."
+        },
+        "tugline.nes.enabled": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "description": "Next-edit suggestions (multi-line, with cursor jumps) from a Zeta-format model, e.g. zed-industries/zeta (Apache-2.0) on vLLM or llama.cpp. Tab jumps to and applies a suggestion, Esc dismisses. Off by default."
+        },
+        "tugline.nes.profile": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Profile whose /v1/completions endpoint serves the next-edit model (empty = main profile)."
+        },
+        "tugline.nes.latencyMs": {
+          "type": "number",
+          "default": 400,
+          "minimum": 50,
+          "description": "A next-edit request not answered within this many milliseconds is cancelled."
+        },
+        "tugline.nes.maxTokens": {
+          "type": "number",
+          "default": 512,
+          "minimum": 16
+        },
+        "tugline.nes.debounceMs": {
+          "type": "number",
+          "default": 150,
+          "minimum": 0
+        },
+        "tugline.voice.enabled": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "description": "Push-to-talk voice input (Ctrl+Alt+V or the mic button): audio is recorded locally (sox, ffmpeg or arecord), sent to your transcriber and the text is put in the composer. Audio is never stored. Off by default."
+        },
+        "tugline.voice.transcriber": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Profile whose base URL serves /audio/transcriptions (whisper.cpp server, faster-whisper, vLLM). Its API key is used."
+        },
+        "tugline.voice.url": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Or the full transcription URL, e.g. http://127.0.0.1:8178/v1/audio/transcriptions. No API key is sent to it. A URL that is not on this machine or the LAN asks before the first recording."
+        },
+        "tugline.voice.model": {
+          "type": "string",
+          "default": "whisper-1",
+          "description": "Model name sent to the transcriber."
+        },
+        "tugline.voice.language": {
+          "type": "string",
+          "default": "",
+          "description": "Language hint (ISO 639-1, e.g. \"en\"); empty = auto-detect."
+        },
+        "tugline.voice.recorder": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "sox",
+            "ffmpeg",
+            "arecord"
+          ],
+          "default": "auto",
+          "description": "Audio capture program."
+        },
+        "tugline.voice.maxSeconds": {
+          "type": "number",
+          "default": 60,
+          "minimum": 1,
+          "maximum": 600,
+          "description": "A recording stops by itself after this long."
+        },
+        "tugline.ideContext": {
+          "type": "boolean",
+          "default": false,
+          "description": "Send the open editors, the active file and cursor, and the selected text with each prompt (Qwen Code open-files context). Paths and the selection only; off by default."
+        },
+        "tugline.favoriteModels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Starred models and profiles (\"profile:<name>\" or \"model:<id>\"), shown first in the model picker."
+        }
+      }
+    },
+    "walkthroughs": [
+      {
+        "id": "tugline.start",
+        "title": "Get started with Tugline",
+        "description": "Point it at your model, chat, control what runs, and work in parallel.",
+        "steps": [
+          {
+            "id": "endpoint",
+            "title": "Connect your model",
+            "description": "Any OpenAI-compatible endpoint: Ollama, LM Studio, llama.cpp, vLLM, a company gateway.\n[Configure endpoint](command:tugline.configure)",
+            "media": {
+              "markdown": "media/walkthrough/endpoint.md"
+            },
+            "completionEvents": [
+              "onCommand:tugline.configure"
+            ]
+          },
+          {
+            "id": "chat",
+            "title": "Ask for a change",
+            "description": "Open the chat, @-mention files, review each hunk and keep or undo it.\n[Open the chat](command:tugline.focusChat)",
+            "media": {
+              "markdown": "media/walkthrough/chat.md"
+            },
+            "completionEvents": [
+              "onCommand:tugline.focusChat"
+            ]
+          },
+          {
+            "id": "approve",
+            "title": "Decide what runs without asking",
+            "description": "Auto-approve categories become permission rules; protected paths, deny rules and the sandbox always apply.\n[Auto-approve…](command:tugline.autoApprove)",
+            "media": {
+              "markdown": "media/walkthrough/approve.md"
+            },
+            "completionEvents": [
+              "onCommand:tugline.autoApprove"
+            ]
+          },
+          {
+            "id": "parallel",
+            "title": "Work in parallel",
+            "description": "The task board runs each card in its own git worktree; the arena runs several models on one task.\n[Open the board](command:tugline.board.open)",
+            "media": {
+              "markdown": "media/walkthrough/parallel.md"
+            },
+            "completionEvents": [
+              "onCommand:tugline.board.open"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "package": "node scripts/build.mjs && vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.93.0",
+    "@vscode/codicons": "^0.0.36",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.25.0"
+  },
+  "homepage": "https://github.com/pmgarg/Tugline#readme",
+  "bugs": {
+    "url": "https://github.com/pmgarg/Tugline/issues"
+  },
+  "qna": "https://github.com/pmgarg/Tugline/discussions",
+  "galleryBanner": {
+    "color": "#1B2E6B",
+    "theme": "dark"
+  },
+  "pricing": "Free",
+  "preview": true
+}

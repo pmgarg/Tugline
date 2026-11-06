@@ -1,0 +1,8 @@
+{
+  "name": "test-market",
+  "owner": { "name": "Tugline tests" },
+  "plugins": [
+    { "name": "oh-demo", "source": "./oh-demo", "version": "1.0.0", "description": "Tugline-layout demo" },
+    { "name": "cc-demo", "source": "./cc-demo", "version": "0.3.0", "description": "Claude Code-layout demo" }
+  ]
+}

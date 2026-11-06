@@ -1,0 +1,5 @@
+---
+description: How to cut a release (read when releasing)
+alwaysApply: false
+---
+CURSOR-RELEASE: bump the version in package.json first.

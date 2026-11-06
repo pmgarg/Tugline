@@ -1,0 +1,8 @@
+{
+  "id": "d02-notes-set-value", "version": 1, "type": "desktop_form",
+  "behaviour": "Set a text field directly (desktop_set_value) and verify the value by re-reading the window.",
+  "prompt": "In the Notes app window, replace the text of the note body with exactly: milk, eggs, bread. Then verify it and write the final body text to answer.txt.",
+  "acceptance": ["grep -q 'milk, eggs, bread' answer.txt"],
+  "verification": ["desktop_set_value", "desktop_verify", "desktop_snapshot"],
+  "timeout_s": 600
+}

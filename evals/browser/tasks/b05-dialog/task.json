@@ -1,0 +1,8 @@
+{
+  "id": "b05-dialog", "version": 1, "type": "browser_dialog",
+  "behaviour": "Confirm a destructive action in a native confirm() dialog (never auto-accepted) and report the status.",
+  "prompt": "On {{SITE}}dialogs.html delete item B (confirm the dialog). Then write the status message shown on the page to answer.txt.",
+  "acceptance": ["grep -q 'Item B deleted' answer.txt"],
+  "verification": ["browser_snapshot", "browser_verify"],
+  "timeout_s": 600
+}

@@ -1,0 +1,21 @@
+{
+  "id": "cfg04-yaml-crlf",
+  "version": 1,
+  "type": "edit",
+  "language": "config",
+  "stress": "CRLF YAML with a duplicated key/value pair",
+  "behaviour": "settings.yaml: raise the http timeout to 60. The db timeout must stay 30. `python3 tests/check.py` must pass; do not modify the tests.",
+  "prompt": "settings.yaml: raise the http timeout to 60. The db timeout must stay 30. `python3 tests/check.py` must pass; do not modify the tests.",
+  "acceptance": [
+    "python3 tests/check.py",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "tests/check.py"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

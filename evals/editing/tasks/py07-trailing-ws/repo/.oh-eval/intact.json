@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "calendar_utils.py",
+   "original": "ZGVmIGlzX2xlYXAoeWVhcik6ICAgCiAgICBpZiB5ZWFyICUgNCAhPSAwOiAgIAogICAgICAgIHJldHVybiBGYWxzZQogICAgaWYgeWVhciAlIDEwMCAhPSAwOiAgCiAgICAgICAgcmV0dXJuIFRydWUKICAgIHJldHVybiBGYWxzZQoKCmRlZiBkYXlzX2luX3llYXIoeWVhcik6ICAKICAgIHJldHVybiAzNjYgaWYgaXNfbGVhcCh5ZWFyKSBlbHNlIDM2NSAgCg==",
+   "windows": [
+    [
+     2,
+     9
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

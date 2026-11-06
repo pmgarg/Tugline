@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "sum.go",
+   "original": "cGFja2FnZSBjYWxjCgovLyBTdW1UbyByZXR1cm5zIDEgKyAyICsgLi4uICsgbi4KZnVuYyBTdW1UbyhuIGludCkgaW50IHsKCXRvdGFsIDo9IDAKCWZvciBpIDo9IDE7IGkgPCBuOyBpKysgewoJCXRvdGFsICs9IGkKCX0KCXJldHVybiB0b3RhbAp9Cg==",
+   "windows": [
+    [
+     2,
+     9
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

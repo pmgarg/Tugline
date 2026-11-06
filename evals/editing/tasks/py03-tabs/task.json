@@ -1,0 +1,21 @@
+{
+  "id": "py03-tabs",
+  "version": 1,
+  "type": "edit",
+  "language": "python",
+  "stress": "tab-indented Python (models answer with spaces)",
+  "behaviour": "grid.py: flatten() is supposed to skip None values, but it stops reading a row at the first None. Fix it. Run `python3 -m pytest -q tests`; do not modify the tests.",
+  "prompt": "grid.py: flatten() is supposed to skip None values, but it stops reading a row at the first None. Fix it. Run `python3 -m pytest -q tests`; do not modify the tests.",
+  "acceptance": [
+    "python3 .oh-eval/pytests.py -q tests",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "pytest"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

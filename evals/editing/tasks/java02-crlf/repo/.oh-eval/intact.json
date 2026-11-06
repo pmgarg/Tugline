@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "src/Range.java",
+   "original": "aW1wb3J0IGphdmEudXRpbC5BcnJheUxpc3Q7DQppbXBvcnQgamF2YS51dGlsLkxpc3Q7DQoNCnB1YmxpYyBjbGFzcyBSYW5nZSB7DQogICAgLyoqIFJldHVybnMgdGhlIGludGVnZXJzIGZyb20uLnRvLCBib3RoIGluY2x1c2l2ZS4gKi8NCiAgICBwdWJsaWMgc3RhdGljIExpc3Q8SW50ZWdlcj4gaW5jbHVzaXZlKGludCBmcm9tLCBpbnQgdG8pIHsNCiAgICAgICAgTGlzdDxJbnRlZ2VyPiBvdXQgPSBuZXcgQXJyYXlMaXN0PD4oKTsNCiAgICAgICAgZm9yIChpbnQgaSA9IGZyb207IGkgPCB0bzsgaSsrKSB7DQogICAgICAgICAgICBvdXQuYWRkKGkpOw0KICAgICAgICB9DQogICAgICAgIHJldHVybiBvdXQ7DQogICAgfQ0KfQ0K",
+   "windows": [
+    [
+     4,
+     11
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

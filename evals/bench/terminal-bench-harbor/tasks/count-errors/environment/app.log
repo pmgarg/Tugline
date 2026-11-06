@@ -1,0 +1,8 @@
+2026-10-27 09:00:01 INFO server started on :8080
+2026-10-27 09:00:05 ERROR database connection refused
+2026-10-27 09:00:06 WARN retrying database connection
+2026-10-27 09:00:09 INFO user error page rendered for /missing
+2026-10-27 09:01:10 ERROR timeout talking to payments
+2026-10-27 09:02:00 DEBUG error budget at 98%
+2026-10-27 09:03:44 ERROR disk quota exceeded
+2026-10-27 09:04:00 INFO shutdown requested

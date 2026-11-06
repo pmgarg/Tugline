@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "src/clamp.ts",
+   "original": "ZXhwb3J0IGZ1bmN0aW9uIGNsYW1wKHg6IG51bWJlciwgbG86IG51bWJlciwgaGk6IG51bWJlcik6IG51bWJlciB7CiAgaWYgKHggPCBsbykgcmV0dXJuIGxvOwogIGlmICh4ID4gaGkpIHJldHVybiBsbzsKICByZXR1cm4geDsKfQ==",
+   "windows": [
+    [
+     0,
+     6
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "java01-equals",
+  "version": 1,
+  "type": "edit",
+  "language": "java",
+  "stress": "one-token bug in a common pattern",
+  "behaviour": "src/Point.java: new Point(1, 2).equals(new Point(1, 2)) is false. Fix equals. The check is `javac -d .oh-build src/*.java tests/*.java && java -ea -cp .oh-build Check`; do not modify the tests.",
+  "prompt": "src/Point.java: new Point(1, 2).equals(new Point(1, 2)) is false. Fix equals. The check is `javac -d .oh-build src/*.java tests/*.java && java -ea -cp .oh-build Check`; do not modify the tests.",
+  "acceptance": [
+    "rm -rf .oh-build && javac -d .oh-build src/*.java tests/*.java && java -ea -cp .oh-build Check",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "javac",
+    "Check"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

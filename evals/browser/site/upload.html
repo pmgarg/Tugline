@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Upload</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<main>
+<h1>Upload a file</h1>
+<p><label for="file">Attachment</label> <input id="file" type="file"></p>
+<div id="uploaded" class="status" role="status">No file</div>
+</main>
+<script>
+document.getElementById('file').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const text = await f.text();
+  document.getElementById('uploaded').textContent = 'Uploaded: ' + f.name + ' (' + f.size + ' bytes, first line: ' + text.split('\n')[0] + ')';
+});
+</script>
+</body></html>

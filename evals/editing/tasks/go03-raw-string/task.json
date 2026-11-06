@@ -1,0 +1,22 @@
+{
+  "id": "go03-raw-string",
+  "version": 1,
+  "type": "edit",
+  "language": "go",
+  "stress": "raw string full of backslashes",
+  "behaviour": "paths.go: the notes path template must change to D:\\Data\\{{user}}\\notes.txt so that Path(\"bob\") returns D:\\Data\\bob\\notes.txt. Make the change; `go test ./...` must pass. Do not modify the tests.",
+  "prompt": "paths.go: the notes path template must change to D:\\Data\\{{user}}\\notes.txt so that Path(\"bob\") returns D:\\Data\\bob\\notes.txt. Make the change; `go test ./...` must pass. Do not modify the tests.",
+  "acceptance": [
+    "go test ./...",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "go test"
+  ],
+  "protected": [
+    "**/*_test.go",
+    "go.mod",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

@@ -1,0 +1,21 @@
+{
+  "id": "cfg05-package-json",
+  "version": 1,
+  "type": "edit",
+  "language": "config",
+  "stress": "two JSON edits in one file",
+  "behaviour": "package.json: bump the version to 1.3.0 and add a \"lint\" script that runs \"eslint .\". `python3 tests/check.py` must pass; do not modify the tests.",
+  "prompt": "package.json: bump the version to 1.3.0 and add a \"lint\" script that runs \"eslint .\". `python3 tests/check.py` must pass; do not modify the tests.",
+  "acceptance": [
+    "python3 tests/check.py",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "tests/check.py"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

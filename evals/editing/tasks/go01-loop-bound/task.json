@@ -1,0 +1,22 @@
+{
+  "id": "go01-loop-bound",
+  "version": 1,
+  "type": "edit",
+  "language": "go",
+  "stress": "tab-indented Go",
+  "behaviour": "sum.go: SumTo(3) should be 6 but returns 3. Fix it so `go test ./...` passes. Do not modify the tests.",
+  "prompt": "sum.go: SumTo(3) should be 6 but returns 3. Fix it so `go test ./...` passes. Do not modify the tests.",
+  "acceptance": [
+    "go test ./...",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "go test"
+  ],
+  "protected": [
+    "**/*_test.go",
+    "go.mod",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

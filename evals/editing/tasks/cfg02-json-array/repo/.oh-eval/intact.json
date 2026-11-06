@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "data/users.json",
+   "original": "WwogIHsKICAgICJpZCI6IDEsCiAgICAibmFtZSI6ICJ1c2VyMSIsCiAgICAiYWN0aXZlIjogdHJ1ZQogIH0sCiAgewogICAgImlkIjogMiwKICAgICJuYW1lIjogInVzZXIyIiwKICAgICJhY3RpdmUiOiB0cnVlCiAgfSwKICB7CiAgICAiaWQiOiAzLAogICAgIm5hbWUiOiAidXNlcjMiLAogICAgImFjdGl2ZSI6IHRydWUKICB9LAogIHsKICAgICJpZCI6IDQsCiAgICAibmFtZSI6ICJ1c2VyNCIsCiAgICAiYWN0aXZlIjogdHJ1ZQogIH0sCiAgewogICAgImlkIjogNSwKICAgICJuYW1lIjogInVzZXI1IiwKICAgICJhY3RpdmUiOiB0cnVlCiAgfQpdCg==",
+   "windows": [
+    [
+     11,
+     18
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

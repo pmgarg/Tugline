@@ -1,0 +1,8 @@
+{
+  "id": "b02-form", "version": 1, "type": "browser_form",
+  "behaviour": "Fill and submit a form (text, number, select, radio, checkbox) and report the confirmation.",
+  "prompt": "On {{SITE}}form.html place an order for Ada Lovelace: quantity 3, colour Green, Express shipping, accept the terms. Write the confirmation code shown after placing the order to answer.txt.",
+  "acceptance": ["grep -q ORD-ADA-GREEN-3-EXPRESS answer.txt"],
+  "verification": ["browser_verify", "browser_snapshot"],
+  "timeout_s": 900
+}

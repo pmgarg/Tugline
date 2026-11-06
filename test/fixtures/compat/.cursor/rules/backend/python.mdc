@@ -1,0 +1,6 @@
+---
+description: Python conventions
+globs: *.py, scripts/**/*.sh
+alwaysApply: false
+---
+CURSOR-PYTHON: type-annotate every function and use pathlib.

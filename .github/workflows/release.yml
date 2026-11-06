@@ -1,0 +1,105 @@
+# Release: push a tag like v1.2.0-beta.3 (pre-release) or v1.2.0 (stable) and this workflow
+#   1. builds and tests on Linux,
+#   2. packages the CLI (npm tarball) and the extension (.vsix),
+#   3. publishes the extension to the VS Code Marketplace and Open VSX and the CLI to npm,
+#   4. creates a GitHub release with both files and the release notes.
+#
+# Repository secrets it needs (Settings → Secrets and variables → Actions):
+#   VSCE_PAT   Azure DevOps personal access token with Marketplace → Manage scope (publisher "tugline")
+#   OVSX_PAT   Open VSX access token (namespace "tugline")
+#   NPM_TOKEN  npm automation token for the "tugline" package
+# A tag with a "-" (v1.2.0-beta.3) publishes as a pre-release: the Marketplace pre-release channel and npm's
+# "beta" dist-tag. The extension's own version (vscode/package.json) must be plain x.y.z; the tag names the CLI version.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build and package only (publish nothing)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write # the GitHub release
+  id-token: write # npm provenance
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      FORCE_COLOR: '0'
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install
+        run: |
+          npm ci
+          (cd vscode && npm ci)
+          sudo apt-get update -q && sudo apt-get install -y -q bubblewrap xvfb python3-pytest
+      - name: Check the tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          want="${GITHUB_REF_NAME#v}"
+          have="$(node -p "require('./package.json').version")"
+          [ "$want" = "$have" ] || { echo "tag $GITHUB_REF_NAME but package.json says $have"; exit 1; }
+      - name: Typecheck and test
+        run: |
+          npm run typecheck
+          npm test
+      - name: Build and package
+        run: |
+          npm run build
+          mkdir -p out
+          npm pack --pack-destination out
+          cd vscode
+          npm run build
+          pre=""; case "${GITHUB_REF_NAME}" in *-*) pre="--pre-release";; esac
+          npx --yes @vscode/vsce@3 package $pre --no-dependencies \
+            --baseImagesUrl https://github.com/pmgarg/Tugline/raw/HEAD/vscode/ \
+            --baseContentUrl https://github.com/pmgarg/Tugline/blob/HEAD/vscode/ \
+            -o ../out/
+          ls -la ../out
+      - name: VS Code E2E (packaged build)
+        run: cd vscode && xvfb-run -a node test/runTest.mjs
+      - name: Publish to the VS Code Marketplace
+        if: env.DRY_RUN != 'true'
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          pre=""; case "${GITHUB_REF_NAME}" in *-*) pre="--pre-release";; esac
+          npx --yes @vscode/vsce@3 publish $pre --packagePath out/*.vsix
+      - name: Publish to Open VSX
+        if: env.DRY_RUN != 'true'
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          pre=""; case "${GITHUB_REF_NAME}" in *-*) pre="--pre-release";; esac
+          npx --yes ovsx@0 publish out/*.vsix $pre -p "$OVSX_PAT"
+      - name: Publish the CLI to npm
+        if: env.DRY_RUN != 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          tag="latest"; case "${GITHUB_REF_NAME}" in *-*) tag="beta";; esac
+          npm publish out/tugline-*.tgz --access public --provenance --tag "$tag"
+      - name: GitHub release
+        if: env.DRY_RUN != 'true' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="docs/RELEASE_NOTES_${GITHUB_REF_NAME}.md"
+          [ -f "$notes" ] || notes=/dev/null
+          pre=""; case "${GITHUB_REF_NAME}" in *-*) pre="--prerelease";; esac
+          gh release create "$GITHUB_REF_NAME" out/* --title "Tugline ${GITHUB_REF_NAME#v}" --notes-file "$notes" $pre

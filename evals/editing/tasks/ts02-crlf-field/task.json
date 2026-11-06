@@ -1,0 +1,21 @@
+{
+  "id": "ts02-crlf-field",
+  "version": 1,
+  "type": "edit",
+  "language": "typescript",
+  "stress": "CRLF TypeScript, edit spans interface and function",
+  "behaviour": "src/config.ts: add a `secure: boolean` field to Config. parseConfig should set it to true only when raw.secure is the string 'true' (default false). `node tests/check.ts` must pass; do not modify the tests.",
+  "prompt": "src/config.ts: add a `secure: boolean` field to Config. parseConfig should set it to true only when raw.secure is the string 'true' (default false). `node tests/check.ts` must pass; do not modify the tests.",
+  "acceptance": [
+    "node tests/check.ts",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "tests/check.ts"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "src/Temperature.java",
+   "original": "cHVibGljIGNsYXNzIFRlbXBlcmF0dXJlIHsKCS8qKiBDZWxzaXVzIHRvIEZhaHJlbmhlaXQuICovCglwdWJsaWMgc3RhdGljIGRvdWJsZSB0b0ZhaHJlbmhlaXQoZG91YmxlIGMpIHsKCQlyZXR1cm4gYyAqIDUgLyA5ICsgMzI7Cgl9CgoJcHVibGljIHN0YXRpYyBkb3VibGUgdG9DZWxzaXVzKGRvdWJsZSBmKSB7CgkJcmV0dXJuIChmIC0gMzIpICogNSAvIDk7Cgl9Cn0K",
+   "windows": [
+    [
+     0,
+     7
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

@@ -1,0 +1,13 @@
+{
+  "description": "Browser automation suite (SPEC I1, E1-E8) over the local test site. S18 fields (outcome, integrity, verification, cost) plus cascade path statistics. The setup module serves evals/browser/site on a random 127.0.0.1 port as {{SITE}}.",
+  "setup": "setup.mjs",
+  "repeats": 1,
+  "arms": {
+    "text_only": {
+      "web": { "allowHosts": ["127.0.0.1"] },
+      "browser": { "enabled": true },
+      "perception": { "backend": "ocr" },
+      "agent": { "maxTurns": 30, "requireVerification": false }
+    }
+  }
+}

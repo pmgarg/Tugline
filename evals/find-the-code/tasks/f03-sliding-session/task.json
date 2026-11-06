@@ -1,0 +1,27 @@
+{
+  "id": "f03-sliding-session",
+  "version": 1,
+  "type": "localise_and_repair",
+  "behaviour": "an active session is extended on every request",
+  "prompt": "People get logged out 30 minutes after signing in even while they are actively using the site; they should only be logged out after 30 minutes without activity. Fix it. `python3 -m pytest -q` must pass; do not modify the tests.",
+  "acceptance": [
+    "python3 -m pytest -q"
+  ],
+  "verification": [
+    "pytest"
+  ],
+  "protected": [
+    "tests/**",
+    "conftest.py"
+  ],
+  "timeout_s": 900,
+  "reachability": {
+    "network": false,
+    "editable": [
+      "auth/session.py"
+    ],
+    "protected": [
+      "tests/**"
+    ]
+  }
+}

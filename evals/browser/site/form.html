@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Order form</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<main>
+<h1>Order form</h1>
+<form id="order" aria-label="Order">
+  <p><label for="name">Full name</label> <input id="name" name="name" autocomplete="name"></p>
+  <p><label for="email">Email</label> <input id="email" name="email" type="email"></p>
+  <p><label for="qty">Quantity</label> <input id="qty" name="qty" type="number" min="1" max="99" value="1"></p>
+  <p><label for="color">Color</label>
+    <select id="color" name="color">
+      <option value="">Choose…</option><option>Red</option><option>Green</option><option>Blue</option>
+    </select></p>
+  <fieldset><legend>Shipping</legend>
+    <label><input type="radio" name="ship" value="standard" checked> Standard</label>
+    <label><input type="radio" name="ship" value="express"> Express</label>
+  </fieldset>
+  <p><label><input type="checkbox" id="terms" name="terms"> I accept the terms</label></p>
+  <p><button id="place-order" type="submit">Place order</button></p>
+</form>
+<div id="result" class="status" role="status" aria-live="polite"></div>
+</main>
+<script>
+document.getElementById('order').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const out = document.getElementById('result');
+  if (!f.get('terms')) { out.textContent = 'Error: please accept the terms'; return; }
+  if (!f.get('name') || !f.get('color')) { out.textContent = 'Error: name and color are required'; return; }
+  const code = 'ORD-' + String(f.get('name')).trim().split(/\s+/)[0].toUpperCase() + '-' + String(f.get('color')).toUpperCase() + '-' + f.get('qty') + '-' + String(f.get('ship')).toUpperCase();
+  out.textContent = 'Order confirmed: ' + code;
+});
+</script>
+</body></html>

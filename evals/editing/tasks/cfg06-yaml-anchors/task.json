@@ -1,0 +1,21 @@
+{
+  "id": "cfg06-yaml-anchors",
+  "version": 1,
+  "type": "edit",
+  "language": "config",
+  "stress": "YAML anchors and merge keys",
+  "behaviour": "environments.yaml: raise the default retries to 5 (for every environment) and give staging its own timeout of 20. `python3 tests/check.py` must pass; do not modify the tests.",
+  "prompt": "environments.yaml: raise the default retries to 5 (for every environment) and give staging its own timeout of 20. `python3 tests/check.py` must pass; do not modify the tests.",
+  "acceptance": [
+    "python3 tests/check.py",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "tests/check.py"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

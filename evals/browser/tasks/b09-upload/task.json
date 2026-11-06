@@ -1,0 +1,8 @@
+{
+  "id": "b09-upload", "version": 1, "type": "browser_upload",
+  "behaviour": "Upload a workspace file through a file input and report what the page shows.",
+  "prompt": "On {{SITE}}upload.html upload the file data/hello.txt from the workspace as the attachment. Write the confirmation shown by the page to answer.txt.",
+  "acceptance": ["grep -q 'Uploaded: hello.txt' answer.txt"],
+  "verification": ["browser_snapshot"],
+  "timeout_s": 600
+}

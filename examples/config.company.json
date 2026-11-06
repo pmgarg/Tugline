@@ -1,0 +1,30 @@
+{
+  "profile": "company",
+  "smallProfile": "company-small",
+  "profiles": {
+    "company": {
+      "baseUrl": "https://llm.mycompany.internal/v1",
+      "apiKey": "env:COMPANY_LLM_KEY",
+      "model": "qwen3-coder-30b",
+      "contextWindow": 65536,
+      "maxOutputTokens": 8192,
+      "toolMode": "auto",
+      "headers": { "X-Team": "platform" }
+    },
+    "company-small": { "baseUrl": "https://llm.mycompany.internal/v1", "apiKey": "env:COMPANY_LLM_KEY", "model": "qwen3-8b", "contextWindow": 32768 }
+  },
+  "permissionMode": "ask",
+  "permissions": {
+    "allow": ["bash(npm test*)", "bash(npm run lint*)", "bash(git status*)", "bash(git diff*)"],
+    "deny": ["bash(curl*)", "bash(wget*)"],
+    "protectedPaths": ["tests/**", ".github/**"]
+  },
+  "web": { "searchProvider": "searxng", "searxngUrl": "https://search.mycompany.internal", "allowHosts": ["*.mycompany.internal"] },
+  "agent": { "maxTurns": 60, "maxRepeatFailures": 4, "maxCostUsd": 0, "autoValidate": true },
+  "mcpServers": {
+    "playwright": { "command": "npx", "args": ["@playwright/mcp@latest", "--headless"] }
+  },
+  "hooks": {
+    "Stop": [{ "command": "npm test --silent >/dev/null 2>&1 || { echo 'npm test is failing: fix it or explain why before finishing' >&2; exit 2; }" }]
+  }
+}

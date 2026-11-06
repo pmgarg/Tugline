@@ -1,0 +1,6 @@
+{
+  "profiles": {
+    "default": { "baseUrl": "https://openrouter.ai/api/v1", "apiKey": "env:OPENROUTER_API_KEY", "model": "nvidia/nemotron-3-super-120b-a12b:free", "contextWindow": 131072, "maxOutputTokens": 8192 },
+    "deepseek": { "baseUrl": "https://api.deepseek.com/v1", "apiKey": "env:DEEPSEEK_API_KEY", "model": "deepseek-flash", "contextWindow": 131072 }
+  }
+}

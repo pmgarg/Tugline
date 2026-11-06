@@ -1,0 +1,6 @@
+{
+  "profiles": {
+    "default": { "baseUrl": "http://localhost:11434/v1", "model": "qwen3-coder:30b", "contextWindow": 65536, "maxOutputTokens": 8192, "toolMode": "auto", "temperature": 0.3 }
+  },
+  "agent": { "promptStyle": "compact" }
+}

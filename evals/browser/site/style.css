@@ -1,0 +1,7 @@
+body { font-family: sans-serif; margin: 16px; max-width: 900px; }
+nav a { margin-right: 8px; }
+.status { margin-top: 8px; font-weight: bold; }
+table { border-collapse: collapse; }
+td, th { border: 1px solid #ccc; padding: 2px 6px; }
+[role=listbox] { border: 1px solid #888; padding: 2px; list-style: none; margin: 0; }
+[role=option] { padding: 2px 6px; cursor: pointer; }

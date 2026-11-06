@@ -1,0 +1,5 @@
+{
+  "name": "oh-demo",
+  "version": "1.0.0",
+  "description": "Fixture plugin in the Tugline layout: a skill, an agent, a command, a hook and an MCP server."
+}

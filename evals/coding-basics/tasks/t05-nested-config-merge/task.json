@@ -1,0 +1,14 @@
+{
+  "id": "t05-nested-config-merge",
+  "version": 1,
+  "type": "source_repair",
+  "behaviour": "load_config(overrides) deep-merges overrides into DEFAULTS: nested keys not overridden keep their defaults, and DEFAULTS itself is never mutated.",
+  "prompt": "After setting only `database.port` in the overrides, the app crashes because `database.host` is gone. load_config() should keep every default that is not overridden, at any depth. Find and fix the bug (it may not be in loader.py) so `python3 -m pytest -q` passes. Do not modify the tests.",
+  "acceptance": [
+    "python3 -m pytest -q",
+    "python3 -c \"from config.loader import load_config, DEFAULTS; c = load_config({'database': {'port': 1}}); assert c['database'] == {'host': 'localhost', 'port': 1, 'options': {'timeout': 5, 'ssl': False}}; assert DEFAULTS['database']['port'] == 5432\""
+  ],
+  "verification": ["pytest"],
+  "protected": ["tests/**"],
+  "timeout_s": 1500
+}

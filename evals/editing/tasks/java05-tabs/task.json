@@ -1,0 +1,22 @@
+{
+  "id": "java05-tabs",
+  "version": 1,
+  "type": "edit",
+  "language": "java",
+  "stress": "tab-indented Java with a near-duplicate line",
+  "behaviour": "src/Temperature.java: toFahrenheit(100) should be 212. Fix the formula (check: `javac -d .oh-build src/*.java tests/*.java && java -ea -cp .oh-build Check`). Do not modify the tests.",
+  "prompt": "src/Temperature.java: toFahrenheit(100) should be 212. Fix the formula (check: `javac -d .oh-build src/*.java tests/*.java && java -ea -cp .oh-build Check`). Do not modify the tests.",
+  "acceptance": [
+    "rm -rf .oh-build && javac -d .oh-build src/*.java tests/*.java && java -ea -cp .oh-build Check",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "javac",
+    "Check"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

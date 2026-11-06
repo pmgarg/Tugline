@@ -1,0 +1,1 @@
+{ "mcpServers": { "calc": { "command": "node", "args": ["${TUG_PLUGIN_ROOT}/server.mjs"] } } }

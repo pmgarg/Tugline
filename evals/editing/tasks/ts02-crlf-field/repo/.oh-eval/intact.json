@@ -1,0 +1,19 @@
+{
+ "files": [
+  {
+   "path": "src/config.ts",
+   "original": "ZXhwb3J0IGludGVyZmFjZSBDb25maWcgew0KICBob3N0OiBzdHJpbmc7DQogIHBvcnQ6IG51bWJlcjsNCn0NCg0KZXhwb3J0IGZ1bmN0aW9uIHBhcnNlQ29uZmlnKHJhdzogUmVjb3JkPHN0cmluZywgc3RyaW5nPik6IENvbmZpZyB7DQogIHJldHVybiB7DQogICAgaG9zdDogcmF3Lmhvc3QgPz8gJ2xvY2FsaG9zdCcsDQogICAgcG9ydDogTnVtYmVyKHJhdy5wb3J0ID8/IDgwKSwNCiAgfTsNCn0NCg==",
+   "windows": [
+    [
+     0,
+     6
+    ],
+    [
+     6,
+     12
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

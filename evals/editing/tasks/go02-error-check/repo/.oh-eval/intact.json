@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "parse.go",
+   "original": "cGFja2FnZSBjYWxjCgppbXBvcnQgInN0cmNvbnYiCgovLyBQYXJzZUFsbCBjb252ZXJ0cyBldmVyeSBzdHJpbmcgdG8gYW4gaW50IGFuZCBzdG9wcyBhdCB0aGUgZmlyc3QgZXJyb3IuCmZ1bmMgUGFyc2VBbGwoeHMgW11zdHJpbmcpIChbXWludCwgZXJyb3IpIHsKCW91dCA6PSBtYWtlKFtdaW50LCAwLCBsZW4oeHMpKQoJZm9yIF8sIHggOj0gcmFuZ2UgeHMgewoJCW4sIF8gOj0gc3RyY29udi5BdG9pKHgpCgkJb3V0ID0gYXBwZW5kKG91dCwgbikKCX0KCXJldHVybiBvdXQsIG5pbAp9Cg==",
+   "windows": [
+    [
+     5,
+     12
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

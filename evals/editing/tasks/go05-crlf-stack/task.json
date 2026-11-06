@@ -1,0 +1,22 @@
+{
+  "id": "go05-crlf-stack",
+  "version": 1,
+  "type": "edit",
+  "language": "go",
+  "stress": "CRLF Go file",
+  "behaviour": "stack.go: Pop returns the oldest item instead of the most recently pushed one (it behaves like a queue). Fix it so `go test ./...` passes. Do not modify the tests.",
+  "prompt": "stack.go: Pop returns the oldest item instead of the most recently pushed one (it behaves like a queue). Fix it so `go test ./...` passes. Do not modify the tests.",
+  "acceptance": [
+    "go test ./...",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "go test"
+  ],
+  "protected": [
+    "**/*_test.go",
+    "go.mod",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

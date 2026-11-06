@@ -1,0 +1,11 @@
+instruction: |-
+  Create a file named hello.txt in the current directory. It must contain exactly
+  the line "Hello, world!" followed by a single newline, and nothing else.
+author_email: tugline@example.com
+difficulty: easy
+category: file-operations
+tags:
+  - file-operations
+parser_name: pytest
+max_agent_timeout_sec: 300
+max_test_timeout_sec: 60

@@ -1,0 +1,98 @@
+{
+  "name": "tugline",
+  "version": "1.2.0-beta.4",
+  "description": "Tugline: a coding agent that runs on any OpenAI-compatible model (local, company-hosted or cloud), with an OS sandbox, reviewable edits and runs verified by your own tests.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/core/index.js",
+  "types": "dist/core/index.d.ts",
+  "bin": {
+    "tugline": "dist/cli/main.js",
+    "tug": "dist/cli/main.js"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "agents",
+    "README.md",
+    "docker",
+    "NOTICE",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/postbuild.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node scripts/run-tests.mjs",
+    "cli": "node --import tsx src/cli/main.ts",
+    "vscode:build": "cd vscode && npm run build",
+    "vscode:package": "cd vscode && npm run package",
+    "test:serial": "node scripts/run-tests.mjs --serial"
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "1.8.0",
+    "@modelcontextprotocol/client": "^2.4.0",
+    "picomatch": "^4.0.2",
+    "ws": "8.22.0",
+    "zod": "^4.6.7"
+  },
+  "optionalDependencies": {
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/exporter-trace-otlp-http": "0.222.0",
+    "@opentelemetry/resources": "2.11.0",
+    "@opentelemetry/sdk-trace": "2.11.0",
+    "@tree-sitter-grammars/tree-sitter-yaml": "0.7.1",
+    "@vscode/tree-sitter-wasm": "0.3.1",
+    "playwright": "^1.64.1",
+    "tree-sitter-html": "0.23.2",
+    "web-tree-sitter": "0.27.1"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/server": "^2.4.0",
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^22.10.0",
+    "@types/picomatch": "^4.0.0",
+    "@types/ws": "8.18.2",
+    "ajv": "^8.17.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3",
+    "typescript-language-server": "6.0.2",
+    "yaml": "^2.9.1"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/core/index.d.ts",
+      "default": "./dist/core/index.js"
+    },
+    "./sdk": {
+      "types": "./dist/sdk/index.d.ts",
+      "default": "./dist/sdk/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pmgarg/Tugline.git"
+  },
+  "homepage": "https://github.com/pmgarg/Tugline#readme",
+  "bugs": {
+    "url": "https://github.com/pmgarg/Tugline/issues"
+  },
+  "keywords": [
+    "agent",
+    "coding-agent",
+    "llm",
+    "local-llm",
+    "ollama",
+    "vllm",
+    "openrouter",
+    "mcp",
+    "cli",
+    "sandbox"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

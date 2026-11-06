@@ -1,0 +1,21 @@
+{
+  "id": "py04-smart-quotes",
+  "version": 1,
+  "type": "edit",
+  "language": "python",
+  "stress": "typographic quotes and em dashes near the edit",
+  "behaviour": "text.py: slugify(\"Hello — World\") returns \"hello---world\"; it should collapse runs of dashes and strip leading/trailing dashes, giving \"hello-world\". Fix it so the tests pass (do not modify tests).",
+  "prompt": "text.py: slugify(\"Hello — World\") returns \"hello---world\"; it should collapse runs of dashes and strip leading/trailing dashes, giving \"hello-world\". Fix it so the tests pass (do not modify tests).",
+  "acceptance": [
+    "python3 .oh-eval/pytests.py -q tests",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "pytest"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

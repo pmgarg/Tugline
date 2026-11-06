@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "grade.go",
+   "original": "cGFja2FnZSBjYWxjCgovLyBHcmFkZSBtYXBzIGEgc2NvcmUgdG8gYSBsZXR0ZXI6IDkwKyBBLCA4MCsgQiwgNzArIEMsIGVsc2UgRi4KZnVuYyBHcmFkZShzY29yZSBpbnQpIHN0cmluZyB7Cglzd2l0Y2ggewoJY2FzZSBzY29yZSA+PSA5MDoKCQlyZXR1cm4gIkEiCgljYXNlIHNjb3JlID49IDgwOgoJCXJldHVybiAiQiIKCWNhc2Ugc2NvcmUgPiA3MDoKCQlyZXR1cm4gIkMiCglkZWZhdWx0OgoJCXJldHVybiAiRiIKCX0KfQo=",
+   "windows": [
+    [
+     6,
+     13
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

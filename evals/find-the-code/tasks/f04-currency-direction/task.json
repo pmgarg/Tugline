@@ -1,0 +1,27 @@
+{
+  "id": "f04-currency-direction",
+  "version": 1,
+  "type": "localise_and_repair",
+  "behaviour": "converting between currencies goes through EUR correctly",
+  "prompt": "Prices shown in dirhams and rupees are wildly wrong (far too small), while euro prices are fine. Fix it. `python3 -m pytest -q` must pass; do not modify the tests.",
+  "acceptance": [
+    "python3 -m pytest -q"
+  ],
+  "verification": [
+    "pytest"
+  ],
+  "protected": [
+    "tests/**",
+    "conftest.py"
+  ],
+  "timeout_s": 900,
+  "reachability": {
+    "network": false,
+    "editable": [
+      "billing/currency.py"
+    ],
+    "protected": [
+      "tests/**"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "go04-switch",
+  "version": 1,
+  "type": "edit",
+  "language": "go",
+  "stress": "switch/case with repeated lines",
+  "behaviour": "grade.go: Grade(70) returns \"F\" but 70 is a C according to the doc comment. Fix it; `go test ./...` must pass. Do not modify the tests.",
+  "prompt": "grade.go: Grade(70) returns \"F\" but 70 is a C according to the doc comment. Fix it; `go test ./...` must pass. Do not modify the tests.",
+  "acceptance": [
+    "go test ./...",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "go test"
+  ],
+  "protected": [
+    "**/*_test.go",
+    "go.mod",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

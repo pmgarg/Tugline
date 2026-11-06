@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Profile</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<main>
+<h1>Profile</h1>
+<p><label for="token">Access token</label> <input id="token" size="40"></p>
+<p>Preview: <span id="preview"></span></p>
+</main>
+<script>
+// Fixture: mirrors the field into page text, as many "preview" UIs do.
+document.getElementById('token').addEventListener('input', (e) => { document.getElementById('preview').textContent = e.target.value; });
+</script>
+</body></html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Combobox</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<main>
+<h1>Pick a fruit</h1>
+<div>
+  <button id="fruit-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="fruit-list">Fruit: none ▾</button>
+  <ul id="fruit-list" role="listbox" aria-label="Fruits" hidden>
+    <li role="option" id="opt-apple">Apple</li>
+    <li role="option" id="opt-banana">Banana</li>
+    <li role="option" id="opt-cherry">Cherry</li>
+  </ul>
+</div>
+<p>Sort order: <button id="sort" aria-haspopup="menu" aria-expanded="false">Sort: Most likes</button></p>
+<ul id="sort-menu" role="menu" aria-label="Sort by" hidden>
+  <li role="menuitem">Most likes</li><li role="menuitem">Newest</li>
+</ul>
+<div id="chosen" class="status" role="status">No fruit chosen</div>
+</main>
+<script>
+const trig = document.getElementById('fruit-trigger');
+const list = document.getElementById('fruit-list');
+trig.addEventListener('click', () => {
+  const open = list.hidden;
+  list.hidden = !open;
+  trig.setAttribute('aria-expanded', String(open));
+});
+for (const o of list.querySelectorAll('[role=option]')) o.addEventListener('click', () => {
+  for (const x of list.querySelectorAll('[role=option]')) x.removeAttribute('aria-selected');
+  o.setAttribute('aria-selected', 'true');
+  trig.textContent = 'Fruit: ' + o.textContent + ' ▾';
+  list.hidden = true; trig.setAttribute('aria-expanded', 'false');
+  document.getElementById('chosen').textContent = 'You chose ' + o.textContent;
+});
+const sort = document.getElementById('sort'), menu = document.getElementById('sort-menu');
+sort.addEventListener('click', () => { menu.hidden = !menu.hidden; sort.setAttribute('aria-expanded', String(!menu.hidden)); });
+for (const m of menu.querySelectorAll('[role=menuitem]')) m.addEventListener('click', () => { sort.textContent = 'Sort: ' + m.textContent; menu.hidden = true; sort.setAttribute('aria-expanded', 'false'); });
+</script>
+</body></html>

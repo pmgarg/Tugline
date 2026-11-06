@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "grid.py",
+   "original": "ZGVmIGZsYXR0ZW4ocm93cyk6CgkiIiJGbGF0dGVuIHJvd3MgaW50byBvbmUgbGlzdCwgc2tpcHBpbmcgTm9uZSB2YWx1ZXMuIiIiCglvdXQgPSBbXQoJZm9yIHJvdyBpbiByb3dzOgoJCWZvciB4IGluIHJvdzoKCQkJaWYgeCBpcyBOb25lOgoJCQkJYnJlYWsKCQkJb3V0LmFwcGVuZCh4KQoJcmV0dXJuIG91dAoKCmRlZiBjb3VudChyb3dzKToKCXJldHVybiBsZW4oZmxhdHRlbihyb3dzKSkK",
+   "windows": [
+    [
+     3,
+     10
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

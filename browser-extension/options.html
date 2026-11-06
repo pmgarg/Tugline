@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Tugline extension</title>
+<style>
+body{font:14px/1.45 system-ui,sans-serif;max-width:720px;margin:24px auto;padding:0 16px;color:#1b1b1b;background:#fff}
+h1{font-size:20px} h2{font-size:15px;margin-top:24px} label{display:block;margin:10px 0 4px;font-weight:600}
+input[type=text],input[type=password],textarea{width:100%;box-sizing:border-box;padding:6px 8px;font:inherit}
+textarea{height:90px} button{font:inherit;padding:6px 14px;margin-right:8px}
+#stop{background:#c62828;color:#fff;border:0;border-radius:4px}
+.muted{color:#555} #status{padding:6px 10px;background:#f2f2f2;border-radius:4px} li{margin:2px 0}
+</style></head>
+<body>
+<h1>Tugline</h1>
+<p class="muted">The agent can act only in tabs you share with the toolbar button (“Share this tab with Tugline”), only on the sites listed here, and only while an agent session is connected. Chrome shows “started debugging this browser” while it acts; cancel that bar, or press Stop, to end it at once.</p>
+<p id="status" role="status">…</p>
+<h2>Pairing</h2>
+<label for="url">Server URL</label><input id="url" type="text" placeholder="ws://127.0.0.1:7878/browser-extension">
+<label for="token">Pairing token</label><input id="token" type="password" placeholder="from: tug browser-extension pair">
+<h2>Allowed sites</h2>
+<label for="sites">One per line: example.com or *.example.com</label><textarea id="sites"></textarea>
+<label><input id="strict" type="checkbox"> Also require images, scripts and other subresources to be on this list</label>
+<p><button id="save">Save and connect</button><button id="stop">Stop: detach every tab now</button></p>
+<h2>Shared tabs</h2><ul id="tabs"></ul>
+<h2>Recently refused</h2><ul id="blocked"></ul>
+<script src="options.js" type="module"></script>
+</body></html>

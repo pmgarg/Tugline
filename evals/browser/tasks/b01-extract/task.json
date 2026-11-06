@@ -1,0 +1,8 @@
+{
+  "id": "b01-extract", "version": 1, "type": "browser_extract",
+  "behaviour": "Extraction from a static article; the cheap L1 layer should answer without a browser.",
+  "prompt": "On {{SITE}}article.html find the year the North Point lighthouse was first lit and the number of steps of the climb. Write both numbers to answer.txt.",
+  "acceptance": ["grep -q 1871 answer.txt", "grep -q 214 answer.txt"],
+  "verification": ["browser_task", "browser_extract", "web_fetch"],
+  "timeout_s": 600
+}

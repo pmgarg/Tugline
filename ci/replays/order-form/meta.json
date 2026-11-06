@@ -1,0 +1,15 @@
+{
+  "startedAt": "2026-10-29T04:14:59.333Z",
+  "session": "2026-10-29T04-14-59-06e33rmm53ip",
+  "surface": "browser",
+  "model": "mock-model",
+  "versions": {
+    "tugline": "1.0",
+    "engine": "auto"
+  },
+  "pathStats": {
+    "L2b": 6
+  },
+  "steps": 6,
+  "endedAt": "2026-10-29T04:15:01.913Z"
+}

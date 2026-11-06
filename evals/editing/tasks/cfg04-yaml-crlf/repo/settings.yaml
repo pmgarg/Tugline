@@ -1,0 +1,7 @@
+# HTTP client settings
+http:
+  timeout: 30
+  retries: 2
+db:
+  timeout: 30
+  pool: 10

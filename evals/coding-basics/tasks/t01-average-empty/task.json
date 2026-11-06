@@ -1,0 +1,27 @@
+{
+  "id": "t01-average-empty",
+  "version": 1,
+  "type": "source_repair",
+  "behaviour": "average([]) returns 0 as its docstring promises, without breaking the normal mean.",
+  "prompt": "The test suite fails. Fix the bug in calc.py so that `python3 -m pytest -q` passes. Do not modify the tests.",
+  "acceptance": [
+    "python3 -m pytest -q",
+    "python3 -c \"from calc import average; assert average([]) == 0; assert average([4]) == 4; assert abs(average([1, 2]) - 1.5) < 1e-9\""
+  ],
+  "verification": [
+    "pytest"
+  ],
+  "protected": [
+    "tests/**"
+  ],
+  "timeout_s": 1500,
+  "reachability": {
+    "network": false,
+    "editable": [
+      "calc.py"
+    ],
+    "protected": [
+      "tests/**"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "py07-trailing-ws",
+  "version": 1,
+  "type": "edit",
+  "language": "python",
+  "stress": "trailing whitespace on most lines",
+  "behaviour": "calendar_utils.py: is_leap(2000) returns False, but years divisible by 400 are leap years. Fix is_leap so the tests pass. Do not modify the tests.",
+  "prompt": "calendar_utils.py: is_leap(2000) returns False, but years divisible by 400 are leap years. Fix is_leap so the tests pass. Do not modify the tests.",
+  "acceptance": [
+    "python3 .oh-eval/pytests.py -q tests",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "pytest"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

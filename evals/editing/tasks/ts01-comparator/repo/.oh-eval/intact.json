@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "src/sort.ts",
+   "original": "ZXhwb3J0IGludGVyZmFjZSBVc2VyIHsKICBuYW1lOiBzdHJpbmc7CiAgYWdlOiBudW1iZXI7Cn0KCi8qKiBZb3VuZ2VzdCBmaXJzdDsgZXF1YWwgYWdlcyBzb3J0ZWQgYnkgbmFtZS4gKi8KZXhwb3J0IGZ1bmN0aW9uIGJ5QWdlVGhlbk5hbWUodXNlcnM6IFVzZXJbXSk6IFVzZXJbXSB7CiAgcmV0dXJuIFsuLi51c2Vyc10uc29ydCgoYSwgYikgPT4gewogICAgaWYgKGEuYWdlICE9PSBiLmFnZSkgcmV0dXJuIGIuYWdlIC0gYS5hZ2U7CiAgICByZXR1cm4gYS5uYW1lLmxvY2FsZUNvbXBhcmUoYi5uYW1lKTsKICB9KTsKfQo=",
+   "windows": [
+    [
+     5,
+     12
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "java02-crlf",
+  "version": 1,
+  "type": "edit",
+  "language": "java",
+  "stress": "CRLF Java file",
+  "behaviour": "src/Range.java: Range.inclusive(1, 3) returns [1, 2] but should return [1, 2, 3]. Fix it (check: `javac -d .oh-build src/*.java tests/*.java && java -ea -cp .oh-build Check`). Do not modify the tests.",
+  "prompt": "src/Range.java: Range.inclusive(1, 3) returns [1, 2] but should return [1, 2, 3]. Fix it (check: `javac -d .oh-build src/*.java tests/*.java && java -ea -cp .oh-build Check`). Do not modify the tests.",
+  "acceptance": [
+    "rm -rf .oh-build && javac -d .oh-build src/*.java tests/*.java && java -ea -cp .oh-build Check",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "javac",
+    "Check"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

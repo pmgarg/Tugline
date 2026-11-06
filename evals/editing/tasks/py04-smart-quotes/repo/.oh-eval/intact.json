@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "text.py",
+   "original": "ZGVmIHNsdWdpZnkodGl0bGUpOgogICAgIiIiVHVybiBhIHRpdGxlIGxpa2Ug4oCcSGVsbG8g4oCUIFdvcmxk4oCdIGludG8g4oCcaGVsbG8td29ybGTigJ0uIiIiCiAgICAjIGtlZXAgbGV0dGVycyBhbmQgZGlnaXRzIOKAlCBldmVyeXRoaW5nIGVsc2UgYmVjb21lcyBhIGRhc2gKICAgIG91dCA9IFtdCiAgICBmb3IgY2ggaW4gdGl0bGUubG93ZXIoKToKICAgICAgICBpZiBjaC5pc2FsbnVtKCk6CiAgICAgICAgICAgIG91dC5hcHBlbmQoY2gpCiAgICAgICAgZWxzZToKICAgICAgICAgICAgb3V0LmFwcGVuZCgiLSIpCiAgICBzbHVnID0gIiIuam9pbihvdXQpCiAgICByZXR1cm4gc2x1Zwo=",
+   "windows": [
+    [
+     7,
+     13
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

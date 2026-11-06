@@ -1,0 +1,123 @@
+name: Tugline docs check
+description: Docs-as-code checks with no model and no network — broken links and anchors, stale path and symbol references, CLI flags that --help no longer lists, snippets that do not parse. Optionally runs .tugline/checks/*.md rules with a model.
+author: Tugline
+branding:
+  icon: book-open
+  color: blue
+
+# Usage (in .github/workflows/docs.yml):
+#
+#   on: [push, pull_request]
+#   jobs:
+#     docs:
+#       runs-on: ubuntu-latest
+#       steps:
+#         - uses: actions/checkout@v4
+#           with: { fetch-depth: 0 }
+#         - uses: <owner>/tugline/.github/actions/tugline-docs-check@<ref>
+#           with:
+#             cli: node dist/cli.js        # how to print YOUR CLI's --help (optional)
+#
+# The check itself needs no model. With `checks: 'true'` and an endpoint, the
+# Markdown rules in .tugline/checks/ run too (`tug review --checks`).
+# Inputs reach the scripts only through environment variables, never by
+# interpolating ${{ inputs.* }} into shell code (script injection).
+
+inputs:
+  working-directory:
+    description: Repository directory to check.
+    required: false
+    default: '.'
+  cli:
+    description: Command that prints the documented CLI's help (`<cli> --help`, `<cli> <sub> --help`). Empty = docs.check.cli from .tugline/config.json (default "tug"); "none" disables the flag check.
+    required: false
+    default: ''
+  files:
+    description: Space-separated doc files to check (default docs.check.docs globs).
+    required: false
+    default: ''
+  checks:
+    description: Also run .tugline/checks/*.md as status checks (needs base-url, model, api-key).
+    required: false
+    default: 'false'
+  base:
+    description: Base branch for the checks diff (default the pull request's base, else main).
+    required: false
+    default: ''
+  base-url:
+    description: OpenAI-compatible base URL (only for checks).
+    required: false
+    default: ''
+  model:
+    description: Model name (only for checks).
+    required: false
+    default: ''
+  api-key:
+    description: API key (only for checks).
+    required: false
+    default: ''
+
+outputs:
+  problems:
+    description: Number of docs problems found.
+    value: ${{ steps.check.outputs.problems }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - name: Build Tugline
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../..
+      run: |
+        npm ci --no-audit --no-fund --omit=optional
+        npm run build
+
+    - name: Docs check
+      id: check
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        TUG_CLI: ${{ github.action_path }}/../../../dist/cli/main.js
+        DOCS_CLI: ${{ inputs.cli }}
+        DOCS_FILES: ${{ inputs.files }}
+      run: |
+        ARGS=(docs check --format github)
+        if [ "$DOCS_CLI" = "none" ]; then ARGS+=(--cli ""); elif [ -n "$DOCS_CLI" ]; then ARGS+=(--cli "$DOCS_CLI"); fi
+        # shellcheck disable=SC2206
+        [ -n "$DOCS_FILES" ] && ARGS+=($DOCS_FILES)
+        set +e
+        node "$TUG_CLI" "${ARGS[@]}" | tee "$RUNNER_TEMP/oh-docs-check.txt"
+        CODE=${PIPESTATUS[0]}
+        set -e
+        echo "problems=$(grep -c '^::error' "$RUNNER_TEMP/oh-docs-check.txt" || true)" >> "$GITHUB_OUTPUT"
+        echo "TUG_DOCS_EXIT=$CODE" >> "$GITHUB_ENV"
+
+    - name: Check files (.tugline/checks)
+      if: inputs.checks == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        TUG_CLI: ${{ github.action_path }}/../../../dist/cli/main.js
+        TUG_BASE_URL: ${{ inputs.base-url }}
+        TUG_MODEL: ${{ inputs.model }}
+        TUG_API_KEY: ${{ inputs.api-key }}
+        INPUT_BASE: ${{ inputs.base }}
+        PR_BASE: ${{ github.base_ref }}
+      run: |
+        BASE="${INPUT_BASE:-${PR_BASE:-main}}"
+        git fetch --no-tags --quiet origin "+refs/heads/${BASE}:refs/remotes/origin/${BASE}" || true
+        set +e
+        node "$TUG_CLI" review --checks --base "origin/${BASE}" --format github
+        CODE=$?
+        set -e
+        if [ "$CODE" != 0 ]; then echo "TUG_DOCS_EXIT=$CODE" >> "$GITHUB_ENV"; fi
+
+    - name: Result
+      if: always()
+      shell: bash
+      run: exit "${TUG_DOCS_EXIT:-0}"

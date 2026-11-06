@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Subresources</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<main>
+<h1>Subresources</h1>
+<p>Same-host image: <img id="own" alt="own" src="files/dot.png" width="8" height="8"></p>
+<p>Image from 127.0.0.1: <img id="loop" alt="loop" width="8" height="8"></p>
+<div id="st" role="status">pending</div>
+</main>
+<script>
+// Fixture: when this page is served as http://localhost:PORT/, the second image is a
+// subresource on a private (loopback) address that is not the page's own host.
+const st = {};
+const show = () => { document.getElementById('st').textContent = `own image: ${st.own || 'pending'}; 127.0.0.1 image: ${st.loop || 'pending'}`; };
+for (const id of ['own', 'loop']) {
+  const img = document.getElementById(id);
+  img.onload = () => { st[id] = 'loaded'; show(); };
+  img.onerror = () => { st[id] = 'blocked'; show(); };
+}
+document.getElementById('loop').src = 'http://127.0.0.1:' + location.port + '/files/dot.png?loop';
+if (document.getElementById('own').complete && document.getElementById('own').naturalWidth) { st.own = 'loaded'; show(); }
+</script>
+</body></html>

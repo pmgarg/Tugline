@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Download</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<main>
+<h1>Downloads</h1>
+<p><a id="csv" href="files/report.csv" download="report.csv">Download report (CSV)</a></p>
+<p><button id="gen">Generate summary file</button></p>
+</main>
+<script>
+document.getElementById('gen').onclick = () => {
+  const blob = new Blob(['total items: 23\n'], { type: 'text/plain' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'summary.txt';
+  document.body.appendChild(a); a.click(); a.remove();
+};
+</script>
+</body></html>

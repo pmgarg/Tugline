@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Cross-site frame</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<main>
+<h1 id="h">Cross-site frame</h1>
+<div id="st" role="status">pending</div>
+</main>
+<script>
+// Fixture (G4). Served as http://localhost:PORT/oopif.html?probe=P it embeds itself from
+// http://127.0.0.1:PORT/ (a different site, so Chromium runs the frame in its own process:
+// an out-of-process iframe). The frame (?inner) loads two images from 127.0.0.2:P, a
+// loopback address that is never allowlisted: one directly, one through a 302 on 127.0.0.1.
+const q = new URLSearchParams(location.search);
+const probe = 'http://127.0.0.2:' + q.get('probe');
+const st = document.getElementById('st');
+if (q.has('inner')) {
+  document.getElementById('h').textContent = 'Inner frame';
+  const res = {};
+  const show = () => { st.textContent = `direct: ${res.direct || 'pending'}; redirected: ${res.redirected || 'pending'}`; };
+  const load = (id, src) => {
+    const img = new Image();
+    img.onload = () => { res[id] = 'loaded'; show(); };
+    img.onerror = () => { res[id] = 'blocked'; show(); };
+    img.src = src;
+  };
+  load('direct', probe + '/direct.png');
+  load('redirected', '/__redirect?to=' + encodeURIComponent(probe + '/redirected.png'));
+} else {
+  const f = document.createElement('iframe');
+  f.title = 'inner';
+  f.src = 'http://127.0.0.1:' + location.port + '/oopif.html?inner&probe=' + q.get('probe');
+  f.onload = () => { st.textContent = 'frame: loaded'; };
+  document.querySelector('main').appendChild(f);
+}
+</script>
+</body></html>

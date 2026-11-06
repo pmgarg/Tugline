@@ -1,0 +1,19 @@
+{
+ "files": [
+  {
+   "path": "package.json",
+   "original": "ewogICJuYW1lIjogIndpZGdldCIsCiAgInZlcnNpb24iOiAiMS4yLjMiLAogICJwcml2YXRlIjogdHJ1ZSwKICAic2NyaXB0cyI6IHsKICAgICJidWlsZCI6ICJ0c2MgLXAgLiIsCiAgICAidGVzdCI6ICJub2RlIC0tdGVzdCIKICB9LAogICJkZXZEZXBlbmRlbmNpZXMiOiB7CiAgICAidHlwZXNjcmlwdCI6ICJeNS45LjMiCiAgfQp9Cg==",
+   "windows": [
+    [
+     0,
+     6
+    ],
+    [
+     3,
+     10
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

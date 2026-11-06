@@ -1,0 +1,12 @@
+{
+  "name": "widget",
+  "version": "1.2.3",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

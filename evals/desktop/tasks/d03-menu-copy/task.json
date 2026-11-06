@@ -1,0 +1,8 @@
+{
+  "id": "d03-menu-copy", "version": 1, "type": "desktop_menu",
+  "behaviour": "Deterministic L2a path: compute with the Calculator, then use its menu (Edit > Copy) and the clipboard instead of reading pixels.",
+  "prompt": "On the desktop Calculator compute 9 × 9 by pressing its buttons, then copy the result with the app's Edit > Copy menu and read it from the clipboard. Write the clipboard text to answer.txt.",
+  "acceptance": ["grep -qx 81 answer.txt"],
+  "verification": ["desktop_menu", "desktop_clipboard"],
+  "timeout_s": 600
+}

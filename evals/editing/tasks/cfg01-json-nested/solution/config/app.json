@@ -1,0 +1,12 @@
+{
+  "name": "shop",
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "tls": {
+      "enabled": true,
+      "cert": "/etc/ssl/shop.pem"
+    }
+  },
+  "features": ["cart", "search"]
+}

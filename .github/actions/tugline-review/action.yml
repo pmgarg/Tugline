@@ -1,0 +1,127 @@
+name: Tugline PR review
+description: Review a pull request with Tugline on any OpenAI-compatible model (local, company gateway or cloud) and post the findings.
+author: Tugline
+branding:
+  icon: eye
+  color: blue
+
+# Usage (in .github/workflows/review.yml):
+#
+#   on: pull_request
+#   permissions: { contents: read, pull-requests: write }
+#   jobs:
+#     review:
+#       runs-on: ubuntu-latest
+#       steps:
+#         - uses: actions/checkout@v4
+#           with: { fetch-depth: 0 }
+#         - uses: <owner>/tugline/.github/actions/tugline-review@<ref>
+#           with:
+#             base-url: https://llm.example.com/v1
+#             model: qwen3-coder-30b
+#             api-key: ${{ secrets.TUG_API_KEY }}
+#
+# Inputs reach the scripts only through environment variables, never by
+# interpolating ${{ inputs.* }} into shell code (script injection).
+
+inputs:
+  base-url:
+    description: OpenAI-compatible base URL of the model endpoint, e.g. https://llm.example.com/v1
+    required: true
+  model:
+    description: Model name served by the endpoint.
+    required: true
+  api-key:
+    description: API key for the endpoint. Pass a secret, e.g. secrets.TUG_API_KEY.
+    required: true
+  base:
+    description: Branch to diff against. Defaults to the pull request's base branch, else main.
+    required: false
+    default: ''
+  fail-on:
+    description: Fail the job when a finding of this severity or worse exists (high, medium, low or none).
+    required: false
+    default: none
+  post-comment:
+    description: Post the review as a pull request comment with gh (needs pull-requests write permission).
+    required: false
+    default: 'true'
+  github-token:
+    description: Token used by gh to post the comment.
+    required: false
+    default: ${{ github.token }}
+  tool-mode:
+    description: native (OpenAI tools API) or text (tool calls in text, for endpoints without tool calling); empty = auto.
+    required: false
+    default: ''
+
+outputs:
+  findings:
+    description: Number of findings.
+    value: ${{ steps.review.outputs.findings }}
+  report:
+    description: Path of the markdown report.
+    value: ${{ steps.review.outputs.report }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - name: Build Tugline
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../..
+      run: |
+        npm ci --no-audit --no-fund --omit=optional
+        npm run build
+
+    - name: Fetch the base branch
+      shell: bash
+      env:
+        INPUT_BASE: ${{ inputs.base }}
+        PR_BASE: ${{ github.base_ref }}
+      run: |
+        BASE="${INPUT_BASE:-${PR_BASE:-main}}"
+        git fetch --no-tags --quiet origin "+refs/heads/${BASE}:refs/remotes/origin/${BASE}"
+        echo "TUG_REVIEW_BASE=origin/${BASE}" >> "$GITHUB_ENV"
+
+    - name: Review
+      id: review
+      shell: bash
+      env:
+        TUG_BASE_URL: ${{ inputs.base-url }}
+        TUG_MODEL: ${{ inputs.model }}
+        TUG_API_KEY: ${{ inputs.api-key }}
+        TUG_TOOL_MODE: ${{ inputs.tool-mode }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        TUG_CLI: ${{ github.action_path }}/../../../dist/cli/main.js
+      run: |
+        REPORT="$RUNNER_TEMP/tugline-review.md"
+        set +e
+        node "$TUG_CLI" review --base "$TUG_REVIEW_BASE" --format github --out "$REPORT" --fail-on "$FAIL_ON" --json-out "$RUNNER_TEMP/tugline-review.json"
+        CODE=$?
+        set -e
+        COUNT=$(node -e 'try{console.log(require(process.argv[1]).findings.length)}catch{console.log(0)}' "$RUNNER_TEMP/tugline-review.json")
+        echo "findings=$COUNT" >> "$GITHUB_OUTPUT"
+        echo "report=$REPORT" >> "$GITHUB_OUTPUT"
+        [ -f "$REPORT" ] && cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+        echo "TUG_REVIEW_EXIT=$CODE" >> "$GITHUB_ENV"
+
+    - name: Post the review comment
+      if: always() && inputs.post-comment == 'true' && github.event.pull_request.number
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR: ${{ github.event.pull_request.number }}
+        REPORT: ${{ steps.review.outputs.report }}
+      run: |
+        if ! command -v gh >/dev/null 2>&1; then echo "gh not found; skipping the PR comment"; exit 0; fi
+        if [ -f "$REPORT" ]; then gh pr comment "$PR" --body-file "$REPORT" || echo "could not post the comment (permissions?)"; fi
+
+    - name: Apply fail-on
+      if: always()
+      shell: bash
+      run: exit "${TUG_REVIEW_EXIT:-0}"

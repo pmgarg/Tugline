@@ -1,0 +1,26 @@
+{
+  "description": "Desktop computer-use suite (SPEC I1, F1-F8). Arm fake_driver runs against the fake cua-driver MCP server (deterministic Calculator + Notes model; run `tug eval evals/desktop` from the repository root). On a Mac, scripts/device-checks/desktop-macos.sh runs d01 against the real cua-driver and Calculator. S18 fields plus cascade path statistics.",
+  "setup": "setup.mjs",
+  "repeats": 1,
+  "arms": {
+    "fake_driver": {
+      "desktop": {
+        "enabled": true,
+        "backend": "cua",
+        "cuaDriverCommand": "node",
+        "cuaDriverArgs": [
+          "evals/desktop/fake-cua-driver.mjs"
+        ],
+        "autoApproveApps": [
+          "Calculator",
+          "Notes"
+        ],
+        "settleMs": 0
+      },
+      "agent": {
+        "maxTurns": 30,
+        "requireVerification": false
+      }
+    }
+  }
+}

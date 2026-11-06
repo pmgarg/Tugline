@@ -1,0 +1,8 @@
+{
+  "id": "b03-filter", "version": 1, "type": "browser_filter",
+  "behaviour": "Use a client-side filter on a 300-row table and read the resulting count.",
+  "prompt": "On {{SITE}}table.html filter the inventory to Sprocket items. How many rows remain? Write just the number to answer.txt.",
+  "acceptance": ["grep -qw 60 answer.txt"],
+  "verification": ["browser_snapshot", "browser_extract"],
+  "timeout_s": 900
+}

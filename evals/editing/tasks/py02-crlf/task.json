@@ -1,0 +1,21 @@
+{
+  "id": "py02-crlf",
+  "version": 1,
+  "type": "edit",
+  "language": "python",
+  "stress": "CRLF line endings must survive",
+  "behaviour": "pricing.py: apply_discount(100, 20) should return 80 (the price reduced by 20 percent) but returns 20. Fix the function so the tests pass. Do not modify the tests.",
+  "prompt": "pricing.py: apply_discount(100, 20) should return 80 (the price reduced by 20 percent) but returns 20. Fix the function so the tests pass. Do not modify the tests.",
+  "acceptance": [
+    "python3 .oh-eval/pytests.py -q tests",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "pytest"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

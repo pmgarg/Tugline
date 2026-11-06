@@ -1,0 +1,23 @@
+{
+ "files": [
+  {
+   "path": "deploy.yaml",
+   "original": "c2VydmljZXM6CiAgd2ViOgogICAgaW1hZ2U6IHNob3Avd2ViOjEuNAogICAgcG9ydHM6CiAgICAgIC0gIjgwOjgwODAiCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSBMT0dfTEVWRUw9aW5mbwogIHdvcmtlcjoKICAgIGltYWdlOiBzaG9wL3dvcmtlcjoxLjQKICAgIGVudmlyb25tZW50OgogICAgICAtIExPR19MRVZFTD1pbmZvCg==",
+   "windows": [
+    [
+     0,
+     6
+    ],
+    [
+     5,
+     12
+    ],
+    [
+     8,
+     14
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

@@ -1,0 +1,21 @@
+{
+  "id": "py06-bom-rename",
+  "version": 1,
+  "type": "edit",
+  "language": "python",
+  "stress": "UTF-8 BOM must survive; rename every occurrence",
+  "behaviour": "report.py: rename the function fmt_row to format_row, including every call site (the tests import format_row). Keep behaviour the same. Do not modify the tests.",
+  "prompt": "report.py: rename the function fmt_row to format_row, including every call site (the tests import format_row). Keep behaviour the same. Do not modify the tests.",
+  "acceptance": [
+    "python3 .oh-eval/pytests.py -q tests",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "pytest"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

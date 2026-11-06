@@ -1,0 +1,17 @@
+These apply-patch scenarios are ported from OpenAI Codex
+(https://github.com/openai/codex, codex-rs/apply-patch/tests/fixtures/scenarios,
+commit 4d3ed3f3b47d39f8fe0b60df74a20f528b6fc618), licensed under the Apache License 2.0.
+
+Layout per scenario: input/ (initial files), patch.txt, expected/ (exact final state).
+
+Deliberate difference: Tugline applies a patch all-or-nothing, so scenario 015
+was renamed from 015_failure_after_partial_success_leaves_changes to
+015_failure_after_partial_success_leaves_no_changes and its expected/ state is empty
+(Codex leaves created.txt behind when a later hunk fails).
+
+Ambiguity: Codex applies a hunk at the FIRST matching location. Tugline refuses a
+hunk whose lines match more than one place in its search region (after the previous
+hunk and the optional @@ anchor) and lists the candidate line numbers. None of the
+scenarios here relies on first-match (all of them have a unique hunk location), so no
+scenario needed changing for this; the refusal is covered by test/edit-patch.test.ts
+("A7/A1: an ambiguous hunk is refused …").

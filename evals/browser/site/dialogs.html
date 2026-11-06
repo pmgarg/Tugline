@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Dialogs</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<main>
+<h1>Dialogs</h1>
+<ul aria-label="Items" id="items"><li>Item A</li><li>Item B</li></ul>
+<p><button id="hello">Say hello</button></p>
+<p><button id="delete-b">Delete item B</button></p>
+<p><button id="rename">Rename list</button></p>
+<p><button id="open-modal">Open settings</button></p>
+<div id="modal" role="dialog" aria-label="Settings" aria-modal="true" hidden>
+  <p>Settings</p><label><input type="checkbox" id="dark"> Dark mode</label>
+  <button id="close-modal">Close settings</button>
+</div>
+<div id="log" class="status" role="status">Ready</div>
+</main>
+<script>
+const log = (t) => document.getElementById('log').textContent = t;
+document.getElementById('hello').onclick = () => { alert('Hello from the page'); log('Alert closed'); };
+document.getElementById('delete-b').onclick = () => {
+  if (confirm('Delete item B?')) { document.querySelector('#items li:nth-child(2)')?.remove(); log('Item B deleted'); }
+  else log('Delete cancelled');
+};
+document.getElementById('rename').onclick = () => { const v = prompt('New list name?', 'Items'); log(v === null ? 'Rename cancelled' : 'Renamed to ' + v); };
+document.getElementById('open-modal').onclick = () => { document.getElementById('modal').hidden = false; };
+document.getElementById('close-modal').onclick = () => { document.getElementById('modal').hidden = true; log('Settings closed'); };
+</script>
+</body></html>

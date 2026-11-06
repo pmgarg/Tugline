@@ -1,0 +1,19 @@
+{
+ "files": [
+  {
+   "path": "environments.yaml",
+   "original": "ZGVmYXVsdHM6ICZkZWZhdWx0cwogIHJldHJpZXM6IDMKICB0aW1lb3V0OiAxMAoKcHJvZHVjdGlvbjoKICA8PDogKmRlZmF1bHRzCiAgdGltZW91dDogMzAKCnN0YWdpbmc6CiAgPDw6ICpkZWZhdWx0cwo=",
+   "windows": [
+    [
+     0,
+     5
+    ],
+    [
+     7,
+     13
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

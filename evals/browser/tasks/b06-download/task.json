@@ -1,0 +1,8 @@
+{
+  "id": "b06-download", "version": 1, "type": "browser_download",
+  "behaviour": "Download a file into the workspace and read it.",
+  "prompt": "On {{SITE}}download.html download the report CSV. Then read the downloaded file and write the quantity of the sprocket row to answer.txt.",
+  "acceptance": ["test -f downloads/report.csv", "grep -qw 12 answer.txt"],
+  "verification": ["read_file"],
+  "timeout_s": 600
+}

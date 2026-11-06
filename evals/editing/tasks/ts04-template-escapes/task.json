@@ -1,0 +1,21 @@
+{
+  "id": "ts04-template-escapes",
+  "version": 1,
+  "type": "edit",
+  "language": "typescript",
+  "stress": "template literal with ${} and a \\n escape",
+  "behaviour": "src/greet.ts: greet(\"Ann\", 2) must return exactly `Hello, \"Ann\"! You have 2 new messages.` — the name in double quotes and no trailing newline. Fix greet; `node tests/check.ts` must pass. Do not modify the tests.",
+  "prompt": "src/greet.ts: greet(\"Ann\", 2) must return exactly `Hello, \"Ann\"! You have 2 new messages.` — the name in double quotes and no trailing newline. Fix greet; `node tests/check.ts` must pass. Do not modify the tests.",
+  "acceptance": [
+    "node tests/check.ts",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "tests/check.ts"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

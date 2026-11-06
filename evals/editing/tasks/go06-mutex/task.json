@@ -1,0 +1,22 @@
+{
+  "id": "go06-mutex",
+  "version": 1,
+  "type": "edit",
+  "language": "go",
+  "stress": "two methods with near-identical bodies",
+  "behaviour": "counter.go: Counter is documented as safe for concurrent use, but Inc does not lock the mutex, so concurrent increments crash or are lost. Fix Inc; `go test ./...` must pass. Do not modify the tests.",
+  "prompt": "counter.go: Counter is documented as safe for concurrent use, but Inc does not lock the mutex, so concurrent increments crash or are lost. Fix Inc; `go test ./...` must pass. Do not modify the tests.",
+  "acceptance": [
+    "go test ./...",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "go test"
+  ],
+  "protected": [
+    "**/*_test.go",
+    "go.mod",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

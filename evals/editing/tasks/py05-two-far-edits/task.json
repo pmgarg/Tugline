@@ -1,0 +1,21 @@
+{
+  "id": "py05-two-far-edits",
+  "version": 1,
+  "type": "edit",
+  "language": "python",
+  "stress": "160-line file, two bugs ~150 lines apart (multi_edit)",
+  "behaviour": "stats.py has two bugs: mean() divides by the wrong count, and clamp() returns the wrong bound when x is above hi. Fix both so `python3 -m pytest -q tests` passes. Do not modify the tests.",
+  "prompt": "stats.py has two bugs: mean() divides by the wrong count, and clamp() returns the wrong bound when x is above hi. Fix both so `python3 -m pytest -q tests` passes. Do not modify the tests.",
+  "acceptance": [
+    "python3 .oh-eval/pytests.py -q tests",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "pytest"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

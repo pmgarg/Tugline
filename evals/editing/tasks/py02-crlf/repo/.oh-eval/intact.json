@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "pricing.py",
+   "original": "ZGVmIGFwcGx5X2Rpc2NvdW50KHByaWNlLCBwZXJjZW50KToNCiAgICAiIiJSZXR1cm4gcHJpY2UgcmVkdWNlZCBieSBwZXJjZW50ICgwLTEwMCkuIiIiDQogICAgaWYgcGVyY2VudCA8IDAgb3IgcGVyY2VudCA+IDEwMDoNCiAgICAgICAgcmFpc2UgVmFsdWVFcnJvcigicGVyY2VudCBvdXQgb2YgcmFuZ2UiKQ0KICAgIHJldHVybiBwcmljZSAqIHBlcmNlbnQgLyAxMDANCg0KDQpkZWYgd2l0aF90YXgocHJpY2UsIHJhdGU9MC4yKToNCiAgICByZXR1cm4gcm91bmQocHJpY2UgKiAoMSArIHJhdGUpLCAyKQ0K",
+   "windows": [
+    [
+     1,
+     8
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

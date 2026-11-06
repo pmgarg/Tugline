@@ -1,0 +1,8 @@
+{
+  "id": "d01-calc-multiply", "version": 1, "type": "desktop_calc",
+  "behaviour": "Text-only desktop control through the accessibility tree: press Calculator buttons by ref and read the display (S10 scan-act-verify).",
+  "prompt": "Use the Calculator app on the desktop to compute 7 × 8 by pressing its buttons (do not compute it yourself). Write the number the Calculator displays to answer.txt.",
+  "acceptance": ["grep -qx 56 answer.txt"],
+  "verification": ["desktop_snapshot", "desktop_act", "desktop_verify"],
+  "timeout_s": 600
+}

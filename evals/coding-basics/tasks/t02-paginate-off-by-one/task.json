@@ -1,0 +1,18 @@
+{
+  "id": "t02-paginate-off-by-one",
+  "version": 1,
+  "type": "source_repair",
+  "behaviour": "paginate(items, page, size) returns the correct 1-based page.",
+  "prompt": "Users report that page 1 of the paginated list skips the first items. Fix pager.py so `python3 -m pytest -q` passes. Do not modify the tests.",
+  "acceptance": [
+    "python3 -m pytest -q",
+    "python3 -c \"from pager import paginate; xs = list(range(20)); assert paginate(xs, 1, 5) == [0, 1, 2, 3, 4]; assert paginate(xs, 2, 5) == [5, 6, 7, 8, 9]\""
+  ],
+  "verification": [
+    "pytest"
+  ],
+  "protected": [
+    "tests/**"
+  ],
+  "timeout_s": 1500
+}

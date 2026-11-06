@@ -1,0 +1,23 @@
+{
+ "files": [
+  {
+   "path": "report.py",
+   "original": "77u/ZGVmIGZtdF9yb3cobmFtZSwgdmFsdWUpOgogICAgcmV0dXJuIGYie25hbWV9OiB7dmFsdWV9IgoKCmRlZiByZW5kZXIocm93cyk6CiAgICByZXR1cm4gIlxuIi5qb2luKGZtdF9yb3cobiwgdikgZm9yIG4sIHYgaW4gcm93cykKCgpkZWYgcmVuZGVyX29uZShuYW1lLCB2YWx1ZSk6CiAgICByZXR1cm4gZm10X3JvdyhuYW1lLCB2YWx1ZSkK",
+   "windows": [
+    [
+     0,
+     4
+    ],
+    [
+     2,
+     9
+    ],
+    [
+     6,
+     13
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

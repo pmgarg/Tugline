@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Re-render</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<main>
+<h1>Re-rendering list</h1>
+<p><button id="refresh">Refresh list</button> <button id="dup">Duplicate rows</button></p>
+<div id="list" role="region" aria-label="Rows"><button class="edit">Edit</button></div>
+<div id="log" role="status">0 edits</div>
+</main>
+<script>
+let edits = 0;
+const bind = () => document.querySelectorAll('#list .edit').forEach((b) => b.onclick = () => { edits++; document.getElementById('log').textContent = edits + ' edits'; });
+bind();
+// Replaces the element: same role and name, new DOM node (so its old ref is stale).
+document.getElementById('refresh').onclick = () => { document.getElementById('list').innerHTML = '<button class="edit">Edit</button>'; bind(); };
+document.getElementById('dup').onclick = () => { document.getElementById('list').innerHTML = '<button class="edit">Edit</button><button class="edit">Edit</button>'; bind(); };
+</script>
+</body></html>

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Canvas</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<main>
+<h1>Canvas app</h1>
+<canvas id="c" width="420" height="160" style="border:1px solid #999"></canvas>
+<div id="out" class="status" role="status">Waiting</div>
+</main>
+<script>
+const c = document.getElementById('c'), g = c.getContext('2d');
+g.fillStyle = '#fff'; g.fillRect(0, 0, 420, 160);
+g.fillStyle = '#ddd'; g.fillRect(20, 40, 150, 70);
+g.fillStyle = '#2a6'; g.fillRect(240, 40, 150, 70);
+g.font = 'bold 30px sans-serif'; g.fillStyle = '#000'; g.fillText('Cancel', 45, 86);
+g.fillStyle = '#fff'; g.fillText('Submit', 265, 86);
+c.addEventListener('click', (e) => {
+  const r = c.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
+  const out = document.getElementById('out');
+  if (x >= 240 && x <= 390 && y >= 40 && y <= 110) out.textContent = 'Canvas submitted!';
+  else if (x >= 20 && x <= 170 && y >= 40 && y <= 110) out.textContent = 'Canvas cancelled';
+  else out.textContent = 'Missed (' + Math.round(x) + ',' + Math.round(y) + ')';
+});
+</script>
+</body></html>

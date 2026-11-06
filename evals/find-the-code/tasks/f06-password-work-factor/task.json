@@ -1,0 +1,27 @@
+{
+  "id": "f06-password-work-factor",
+  "version": 1,
+  "type": "localise_and_repair",
+  "behaviour": "stored hashes are verified with their own iteration count",
+  "prompt": "Since we raised the password hashing cost, users whose passwords were saved before the change can no longer log in. Fix it without forcing password resets. `python3 -m pytest -q` must pass; do not modify the tests.",
+  "acceptance": [
+    "python3 -m pytest -q"
+  ],
+  "verification": [
+    "pytest"
+  ],
+  "protected": [
+    "tests/**",
+    "conftest.py"
+  ],
+  "timeout_s": 900,
+  "reachability": {
+    "network": false,
+    "editable": [
+      "auth/passwords.py"
+    ],
+    "protected": [
+      "tests/**"
+    ]
+  }
+}

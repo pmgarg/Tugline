@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "inventory.py",
+   "original": "Y2xhc3MgSW52ZW50b3J5OgogICAgZGVmIF9faW5pdF9fKHNlbGYpOgogICAgICAgIHNlbGYuaXRlbXMgPSB7fQoKICAgIGRlZiBhZGQoc2VsZiwgbmFtZSwgcXR5KToKICAgICAgICBpZiBxdHkgPD0gMDoKICAgICAgICAgICAgcmFpc2UgVmFsdWVFcnJvcigicXR5IG11c3QgYmUgcG9zaXRpdmUiKQogICAgICAgIHNlbGYuaXRlbXNbbmFtZV0gPSBzZWxmLml0ZW1zLmdldChuYW1lLCAwKSArIHF0eQoKICAgIGRlZiByZW1vdmUoc2VsZiwgbmFtZSwgcXR5KToKICAgICAgICBoYXZlID0gc2VsZi5pdGVtcy5nZXQobmFtZSwgMCkKICAgICAgICBpZiBxdHkgPiBoYXZlOgogICAgICAgICAgICByYWlzZSBWYWx1ZUVycm9yKCJub3QgZW5vdWdoICVzIiAlIG5hbWUpCiAgICAgICAgc2VsZi5pdGVtc1tuYW1lXSA9IGhhdmUgLSBxdHkKICAgICAgICBpZiBzZWxmLml0ZW1zW25hbWVdIDwgMDoKICAgICAgICAgICAgZGVsIHNlbGYuaXRlbXNbbmFtZV0KCiAgICBkZWYgdG90YWwoc2VsZik6CiAgICAgICAgcmV0dXJuIHN1bShzZWxmLml0ZW1zLnZhbHVlcygpKQo=",
+   "windows": [
+    [
+     11,
+     18
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

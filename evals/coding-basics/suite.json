@@ -1,0 +1,9 @@
+{
+  "description": "EAG S18-style suite. Each comparison changes ONE declared thing. guarded vs baseline: protected-path guard + thrash ceiling. guarded vs guarded_verify: the deterministic verification nudge.",
+  "repeats": 1,
+  "arms": {
+    "guarded": { "agent": { "maxRepeatFailures": 4, "requireVerification": false } },
+    "baseline": { "__guard": false, "agent": { "maxRepeatFailures": 0, "requireVerification": false } },
+    "guarded_verify": { "agent": { "maxRepeatFailures": 4, "requireVerification": true } }
+  }
+}

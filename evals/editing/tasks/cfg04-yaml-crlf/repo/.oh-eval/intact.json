@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "settings.yaml",
+   "original": "IyBIVFRQIGNsaWVudCBzZXR0aW5ncw0KaHR0cDoNCiAgdGltZW91dDogMzANCiAgcmV0cmllczogMg0KZGI6DQogIHRpbWVvdXQ6IDMwDQogIHBvb2w6IDEwDQo=",
+   "windows": [
+    [
+     0,
+     6
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

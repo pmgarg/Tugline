@@ -1,0 +1,108 @@
+# Replay CI (SPEC I3): every recorded browser run committed under ci/replays/
+# (copy a run from .tugline/runs/<session>/ once it passes) is replayed
+# strictly, with no model, on each push and pull request. A UI change that
+# breaks a recorded flow fails the job; `tug replay <run> --heal` then shows
+# whether the flow can be repaired.
+#
+# Tugline is built from this checkout (`npm pack` of the PR's source), so
+# the replay checks the harness under review, not a published release. To use
+# this workflow in another repository, replace the "Build Tugline" step
+# with `npm install -g tugline@<version>`.
+#
+# No recordings is an error: an empty ci/replays/ would otherwise pass
+# silently. Set the repository variable TUGLINE_REPLAY_ALLOW_EMPTY=true (or
+# the allow_empty input of a manual run) to allow it explicitly.
+#
+# The runs replay against the URLs they recorded. This repository's sample
+# (ci/replays/order-form, made by scripts/record-replay-sample.mts) uses the
+# bundled test site on 127.0.0.1:8765; start your own site the same way.
+name: tugline-replay
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      allow_empty:
+        description: Pass when ci/replays/ has no recorded runs
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      REPLAY_DIR: ci/replays
+      SITE_PORT: '8765'
+      ALLOW_EMPTY: ${{ inputs.allow_empty == true || vars.TUGLINE_REPLAY_ALLOW_EMPTY == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Build Tugline from this checkout
+        run: |
+          npm ci
+          npm run build
+          npm pack --pack-destination "$RUNNER_TEMP"
+          npm install -g "$RUNNER_TEMP"/tugline-*.tgz
+          tug --version
+
+      - name: Install the browser (CI only)
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser config for replay
+        run: |
+          mkdir -p ~/.tugline
+          echo '{"browser":{"enabled":true},"web":{"allowHosts":["127.0.0.1","localhost"]}}' > ~/.tugline/config.json
+
+      - name: Start the site under test
+        run: |
+          # The bundled test site the sample run was recorded against.
+          nohup node evals/browser/serve.mjs "$SITE_PORT" > "$RUNNER_TEMP/site.log" 2>&1 &
+          for i in $(seq 1 50); do
+            if curl -fsS "http://127.0.0.1:$SITE_PORT/" > /dev/null; then exit 0; fi
+            sleep 0.2
+          done
+          cat "$RUNNER_TEMP/site.log"
+          echo "::error title=Site did not start::nothing listening on 127.0.0.1:$SITE_PORT"
+          exit 1
+
+      - name: Replay every recorded run
+        run: |
+          FAILED=0
+          COUNT=0
+          shopt -s nullglob
+          for run in "$REPLAY_DIR"/*/; do
+            COUNT=$((COUNT + 1))
+            echo "::group::$run"
+            if tug replay --check "$run"; then echo "pass: $run"; else echo "::error title=Replay failed::$run no longer replays (UI changed?)"; FAILED=1; fi
+            tug replay "$run" --html "$RUNNER_TEMP/$(basename "$run").html" || true
+            echo "::endgroup::"
+          done
+          if [ "$COUNT" -eq 0 ]; then
+            if [ "$ALLOW_EMPTY" = "true" ]; then
+              echo "::warning title=No recorded runs::$REPLAY_DIR has no runs (allowed explicitly)"
+            else
+              echo "::error title=No recorded runs::$REPLAY_DIR has no recorded runs; commit one or set TUGLINE_REPLAY_ALLOW_EMPTY=true"
+              exit 1
+            fi
+          fi
+          echo "$COUNT run(s) replayed"
+          exit "$FAILED"
+
+      - name: Upload replay reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: replay-reports
+          path: ${{ runner.temp }}/*.html
+          if-no-files-found: ignore

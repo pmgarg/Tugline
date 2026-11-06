@@ -1,0 +1,8 @@
+{
+  "id": "b07-canvas", "version": 1, "type": "browser_canvas_l3",
+  "behaviour": "The target is drawn on a <canvas>; a text-only model must use OCR regions (L3) and browser_point.",
+  "prompt": "On {{SITE}}canvas.html press the Submit button (it is drawn on a canvas, so it is not in the accessibility tree). Write the status text shown afterwards to answer.txt.",
+  "acceptance": ["grep -q 'Canvas submitted' answer.txt"],
+  "verification": ["browser_screenshot", "browser_point"],
+  "timeout_s": 900
+}

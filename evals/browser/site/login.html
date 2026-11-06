@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Sign in</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<main>
+<h1>Sign in</h1>
+<form id="login" aria-label="Sign in">
+  <p><label for="user">Username</label> <input id="user" autocomplete="username"></p>
+  <p><label for="pass">Password</label> <input id="pass" type="password" autocomplete="current-password"></p>
+  <p><label for="apikey">API key</label> <input id="apikey" autocomplete="off"></p>
+  <p><button type="submit" id="signin">Sign in</button></p>
+</form>
+<div id="msg" class="status" role="status"></div>
+</main>
+<script>
+// Fixture only: the "correct" password is checked by hash so it does not sit in the page as text.
+async function sha(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+document.getElementById('login').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const u = document.getElementById('user').value, p = document.getElementById('pass').value;
+  const ok = (await sha(p)) === 'a8b2148fbf3ea38c76b47274ee7138430e4d569b8a8981f6ed51c82520898991';
+  document.getElementById('msg').textContent = ok ? 'Welcome, ' + u : 'Wrong password (' + p.length + ' characters)';
+});
+</script>
+</body></html>

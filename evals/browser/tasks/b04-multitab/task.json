@@ -1,0 +1,8 @@
+{
+  "id": "b04-multitab", "version": 1, "type": "browser_tabs",
+  "behaviour": "Follow a link that opens a new tab and read content there.",
+  "prompt": "On {{SITE}}tabs.html open the details (it opens in a new tab) and find the access code. Write it to answer.txt.",
+  "acceptance": ["grep -q TAB-4471 answer.txt"],
+  "verification": ["browser_snapshot"],
+  "timeout_s": 600
+}

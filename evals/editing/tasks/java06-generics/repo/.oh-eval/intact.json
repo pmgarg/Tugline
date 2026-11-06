@@ -1,0 +1,15 @@
+{
+ "files": [
+  {
+   "path": "src/Lists.java",
+   "original": "aW1wb3J0IGphdmEudXRpbC5BcnJheUxpc3Q7CmltcG9ydCBqYXZhLnV0aWwuTGlzdDsKaW1wb3J0IGphdmEudXRpbC5mdW5jdGlvbi5QcmVkaWNhdGU7CgpwdWJsaWMgY2xhc3MgTGlzdHMgewogICAgLyoqIEVsZW1lbnRzIGZvciB3aGljaCBrZWVwIHJldHVybnMgdHJ1ZSwgaW4gb3JkZXIuICovCiAgICBwdWJsaWMgc3RhdGljIDxUPiBMaXN0PFQ+IGZpbHRlcihMaXN0PFQ+IGluLCBQcmVkaWNhdGU8VD4ga2VlcCkgewogICAgICAgIExpc3Q8VD4gb3V0ID0gbmV3IEFycmF5TGlzdDw+KCk7CiAgICAgICAgZm9yIChUIHggOiBpbikgewogICAgICAgICAgICBpZiAoIWtlZXAudGVzdCh4KSkgewogICAgICAgICAgICAgICAgb3V0LmFkZCh4KTsKICAgICAgICAgICAgfQogICAgICAgIH0KICAgICAgICByZXR1cm4gb3V0OwogICAgfQp9Cg==",
+   "windows": [
+    [
+     6,
+     13
+    ]
+   ],
+   "slack": 2
+  }
+ ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "f05-cleanup-keeps-orders",
+  "version": 1,
+  "type": "localise_and_repair",
+  "behaviour": "the nightly job never deletes carts that became orders",
+  "prompt": "After the nightly maintenance runs, some old orders lose their basket contents. Only baskets that were never ordered should be removed. Fix it. `python3 -m pytest -q` must pass; do not modify the tests.",
+  "acceptance": [
+    "python3 -m pytest -q"
+  ],
+  "verification": [
+    "pytest"
+  ],
+  "protected": [
+    "tests/**",
+    "conftest.py"
+  ],
+  "timeout_s": 900,
+  "reachability": {
+    "network": false,
+    "editable": [
+      "jobs/cleanup.py"
+    ],
+    "protected": [
+      "tests/**"
+    ]
+  }
+}

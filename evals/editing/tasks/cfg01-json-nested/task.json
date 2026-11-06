@@ -1,0 +1,21 @@
+{
+  "id": "cfg01-json-nested",
+  "version": 1,
+  "type": "edit",
+  "language": "config",
+  "stress": "nested JSON object",
+  "behaviour": "config/app.json: enable TLS for the server and set its cert to \"/etc/ssl/shop.pem\". Leave everything else unchanged. `python3 tests/check.py` must pass; do not modify the tests.",
+  "prompt": "config/app.json: enable TLS for the server and set its cert to \"/etc/ssl/shop.pem\". Leave everything else unchanged. `python3 tests/check.py` must pass; do not modify the tests.",
+  "acceptance": [
+    "python3 tests/check.py",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "tests/check.py"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

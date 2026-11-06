@@ -1,0 +1,21 @@
+{
+  "id": "ts05-regex",
+  "version": 1,
+  "type": "edit",
+  "language": "typescript",
+  "stress": "regex literal full of backslashes",
+  "behaviour": "src/version.ts: isVersion should also accept an optional patch number (\"1.2.3\"), but it rejects it. Fix the regex. `node tests/check.ts` must pass; do not modify the tests.",
+  "prompt": "src/version.ts: isVersion should also accept an optional patch number (\"1.2.3\"), but it rejects it. Fix the regex. `node tests/check.ts` must pass; do not modify the tests.",
+  "acceptance": [
+    "node tests/check.ts",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "tests/check.ts"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

@@ -1,0 +1,1 @@
+{ "hooks": { "PreToolUse": [ { "matcher": "bash", "command": "echo oh-demo-hook >> plugin-hook-ran.txt" } ] } }

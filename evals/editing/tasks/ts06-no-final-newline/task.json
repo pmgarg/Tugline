@@ -1,0 +1,21 @@
+{
+  "id": "ts06-no-final-newline",
+  "version": 1,
+  "type": "edit",
+  "language": "typescript",
+  "stress": "file without a final newline",
+  "behaviour": "src/clamp.ts: clamp(15, 0, 10) returns 0 instead of 10. Fix it so `node tests/check.ts` passes. Do not modify the tests.",
+  "prompt": "src/clamp.ts: clamp(15, 0, 10) returns 0 instead of 10. Fix it so `node tests/check.ts` passes. Do not modify the tests.",
+  "acceptance": [
+    "node tests/check.ts",
+    ": integrity; python3 .oh-eval/intact.py"
+  ],
+  "verification": [
+    "tests/check.ts"
+  ],
+  "protected": [
+    "tests/**",
+    ".oh-eval/**"
+  ],
+  "timeout_s": 900
+}

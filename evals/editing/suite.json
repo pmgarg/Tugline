@@ -1,0 +1,7 @@
+{
+  "description": "SPEC A9 editing suite: 31 edit tasks over Python, TypeScript, Go, Java and JSON/YAML whose files stress the edit engine (CRLF, BOM, tabs, trailing whitespace, typographic quotes, long lines, escapes, no final newline, repeated lines, far-apart edits). Acceptance = the task's tests + an integrity check of untouched bytes. report.md gains an 'Edit metrics' section: first-try edit success, recovered-after-error, corrupted-file and the matcher tier histogram. To compare edit formats on one model, add arms such as {\"edit\": {\"editFormat\": \"apply_patch\"}}. Regenerate tasks with: npx tsx evals/editing/generate.mts; self-check with: npx tsx evals/editing/check.mts",
+  "repeats": 1,
+  "arms": {
+    "auto": { "agent": { "maxRepeatFailures": 4, "requireVerification": true } }
+  }
+}

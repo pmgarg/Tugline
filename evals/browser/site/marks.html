@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Marks</title><link rel="stylesheet" href="style.css">
+<style>.tool { display: inline-block; padding: 8px; border: 1px solid #888; cursor: pointer; } .tool svg { cursor: pointer; }</style></head>
+<body>
+<main>
+<h1>Toolbar</h1>
+<div class="toolbar">
+  <!-- Excalidraw-style tool: a clickable wrapper around an SVG that is itself marked as a button. One control, two clickable nodes. -->
+  <span class="tool" id="draw" title="Draw" onclick="document.getElementById('st').textContent='draw'"><svg role="button" aria-label="Draw" width="24" height="24"><rect x="2" y="2" width="20" height="20" fill="#36c"></rect></svg></span>
+  <a class="tool" id="erase" href="#erase" onclick="document.getElementById('st').textContent='erase'"><svg role="img" aria-label="Erase" width="24" height="24"><circle cx="12" cy="12" r="10" fill="#c33"></circle></svg></a>
+  <button id="save">Save</button>
+</div>
+<div id="st" role="status">idle</div>
+</main>
+</body></html>

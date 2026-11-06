@@ -1,0 +1,25 @@
+{
+  "description": "N2 AC4: find the code from a user-level symptom, then fix it. with_search exposes code_search (hybrid BM25 + embeddings from profile \"embed\"); without_search hides it. Compare turns and pass rate.",
+  "repeats": 1,
+  "arms": {
+    "with_search": {
+      "search": {
+        "mode": "auto",
+        "embeddings": {
+          "profile": "embed"
+        }
+      },
+      "agent": {
+        "repoMapTokens": 0
+      }
+    },
+    "without_search": {
+      "search": {
+        "mode": "off"
+      },
+      "agent": {
+        "repoMapTokens": 0
+      }
+    }
+  }
+}

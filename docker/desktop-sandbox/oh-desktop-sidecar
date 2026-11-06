@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# `docker exec -i <container> oh-desktop-sidecar`: the Linux AT-SPI sidecar on
+# stdio, joined to the container's desktop session bus.
+[ -f /tmp/oh-session.env ] && . /tmp/oh-session.env
+export DISPLAY="${DISPLAY:-:1}" NO_AT_BRIDGE=0
+exec python3 /opt/tugline/linux_atspi.py
