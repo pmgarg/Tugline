@@ -215,9 +215,14 @@ test('N34 AC3: member count (default 4, maximum 8) and depth limits produce type
 test('N34 SAC1: a member asking for a tool or a mode beyond the lead is clamped, and the clamp is journaled', async () => {
   const ws = tmpWorkspace({});
   const memberTools: string[] = [];
+  // Read the member's mode while its own request is in flight: it surely exists then. (Polling from the test
+  // missed it on CI: with an instant mock model the member was created, answered and disbanded between polls.)
+  let leadId = '';
+  let mode = '';
   const srv = await startMockServer((b) => {
     if (memberOf(b)) {
       memberTools.push(...(b.tools ?? []).map((t: any) => t.function.name));
+      mode ||= teamOf(leadId)?.team.members.get('greedy')?.agent.policy.mode ?? '';
       return { content: 'ok' };
     }
     const n = toolMsgs(b).length;
@@ -229,14 +234,9 @@ test('N34 SAC1: a member asking for a tool or a mode beyond the lead is clamped,
   const leadTools = builtinTools(cfg).filter((t: ToolDef) => ['read_file', 'grep'].includes(t.name));
   const teamTools = (await import('../src/core/tools/registry.js')).toolProviders().find((p) => p.id === 'ws17-team')!.tools(cfg, { workspace: ws, homeDir: cfg.homeDir, depth: 0 }) as ToolDef[];
   const lead = await Agent.create({ workspace: ws, config: cfg, mcp: false, tools: [...leadTools, ...teamTools] });
+  leadId = lead.sessionId;
   try {
-    let mode = '';
-    const run = lead.run('team');
-    for (let i = 0; i < 200 && !mode; i++) {
-      await new Promise((r) => setTimeout(r, 20));
-      mode = teamOf(lead.sessionId)?.team.members.get('greedy')?.agent.policy.mode ?? '';
-    }
-    await run;
+    await lead.run('team');
     assert.equal(mode, 'ask', 'the member runs in the lead\'s mode, not auto');
     assert.ok(memberTools.length && !memberTools.includes('bash') && !memberTools.includes('write_file'), memberTools.join(','));
     const clamps = journal(lead).filter((x) => x.type === 'clamp' && x.child === 'greedy');
@@ -315,15 +315,18 @@ test('N34 SAC3: member A reads an injected page and messages B; B is tainted by 
     if (n === 3) return { toolCalls: [{ name: 'team_disband', arguments: {} }] };
     return { content: 'done' };
   });
-  const lead = await Agent.create({ workspace: ws, config: testConfig(srv.url, BASE), mcp: false, extraTools: [pageTool()], ui: { requestPermission: async (r) => (asked.push(r), { decision: 'deny' }) } });
+  // bob's taint is read while his own permission request is pending: he surely exists then (polling could miss him)
+  let leadId = '';
+  let bobTaint: string | undefined;
+  const requestPermission = async (r: PermissionRequest) => {
+    bobTaint ??= teamOf(leadId)?.team.members.get('bob')?.agent.taintSource;
+    asked.push(r);
+    return { decision: 'deny' as const };
+  };
+  const lead = await Agent.create({ workspace: ws, config: testConfig(srv.url, BASE), mcp: false, extraTools: [pageTool()], ui: { requestPermission } });
+  leadId = lead.sessionId;
   try {
-    let bobTaint: string | undefined;
-    const run = lead.run('go');
-    for (let i = 0; i < 300 && !asked.length; i++) {
-      await new Promise((r) => setTimeout(r, 20));
-      bobTaint ??= teamOf(lead.sessionId)?.team.members.get('bob')?.agent.taintSource;
-    }
-    await run;
+    await lead.run('go');
     const curl = asked.find((r) => /curl/.test(r.detail ?? ''));
     assert.ok(curl, 'bob had to ask before his curl');
     assert.match(curl!.title, /^\[pair\/bob\]/, "the request carries the member's name");
@@ -378,16 +381,14 @@ test('N34 SAC3: taint also flows through the board: a member reading a task writ
 
 test('N34 SAC4: the team stops at its total budget: no model request is sent past it', async () => {
   const ws = tmpWorkspace({});
-  const srv = await startMockServer((b) => (memberOf(b) ? { toolCalls: [{ name: 'team_task_list', arguments: {} }] } : toolMsgs(b).length === 0 ? { toolCalls: [{ name: 'team_create', arguments: { name: 'spend', members: shared(['m1', 'm2']) } }] } : toolMsgs(b).length === 1 ? { toolCalls: [{ name: 'team_wait', arguments: { timeout_s: 30 } }] } : toolMsgs(b).length === 2 ? { toolCalls: [{ name: 'team_disband', arguments: {} }] } : { content: 'done' }));
+  // the pool is read while a member's request is in flight: the team surely exists then (polling could miss it)
+  let leadId = '';
+  let pool: any;
+  const srv = await startMockServer((b) => (memberOf(b) ? ((pool ??= teamOf(leadId)?.team.pool), { toolCalls: [{ name: 'team_task_list', arguments: {} }] }) : toolMsgs(b).length === 0 ? { toolCalls: [{ name: 'team_create', arguments: { name: 'spend', members: shared(['m1', 'm2']) } }] } : toolMsgs(b).length === 1 ? { toolCalls: [{ name: 'team_wait', arguments: { timeout_s: 30 } }] } : toolMsgs(b).length === 2 ? { toolCalls: [{ name: 'team_disband', arguments: {} }] } : { content: 'done' }));
   const lead = await Agent.create({ workspace: ws, config: testConfig(srv.url, { ...BASE, team: { ...BASE.team, maxTokens: 9000 } }), mcp: false });
+  leadId = lead.sessionId;
   try {
-    let pool: any;
-    const run = lead.run('go');
-    for (let i = 0; i < 100 && !pool; i++) {
-      await new Promise((r) => setTimeout(r, 20));
-      pool = teamOf(lead.sessionId)?.team.pool;
-    }
-    await run;
+    await lead.run('go');
     const memberCalls = srv.requests.filter((b) => memberOf(b)).length;
     assert.ok(pool.used.tokens <= 9000, `team spent ${pool.used.tokens} of 9000`);
     assert.ok(memberCalls >= 2 && memberCalls < 12, `${memberCalls} member calls before the budget stopped them`);
