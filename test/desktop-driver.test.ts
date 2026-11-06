@@ -397,11 +397,16 @@ test('F10 AC1: the sandbox image builds and the sidecar inside answers ping and 
   try {
     await b.start(); // ping
     let win: { windowId: string; title: string } | undefined;
-    for (let i = 0; i < 80 && !win; i++) {
+    // a fresh image on a slow CI runner can take a while to bring up the AT-SPI bus and the app
+    for (let i = 0; i < 240 && !win; i++) {
       win = (await d.windows()).find((w) => w.title === 'OH Calc');
       if (!win) await new Promise((r) => setTimeout(r, 250));
     }
-    assert.ok(win, 'the sample app is on the sandbox AT-SPI bus');
+    if (!win) {
+      // on failure, say why: the container's own logs (display, bus, AT-SPI launcher, the app)
+      const logs = spawnSync('docker', ['exec', cfg.desktop!.sandbox!.container!, 'sh', '-c', 'for f in /tmp/xvfb.log /tmp/atspi.log /tmp/oh_calc.log; do echo "== $f"; tail -n 20 "$f" 2>&1; done; ls /usr/libexec/at-spi-bus-launcher /usr/lib/at-spi2-core/at-spi-bus-launcher 2>&1'], { encoding: 'utf8', timeout: 20_000 });
+      assert.fail(`the sample app is on the sandbox AT-SPI bus; windows seen: ${JSON.stringify((await d.windows()).map((w) => w.title))}\n${logs.stdout}${logs.stderr}`);
+    }
     const snap = await d.snapshot(win.windowId);
     assert.match(snap.tree!, /button "=" \[ref=d\d+\]/);
     const r = await d.act(refOf(snap.tree!, /button "9"/), 'press');

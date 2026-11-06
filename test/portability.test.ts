@@ -329,7 +329,7 @@ test('R7 A9: with pytest installed the runner is plain `python3 -m pytest` (noth
   const ws = tmpWorkspace({ 'lib.py': 'def two():\n    return 2\n', 'tests/test_a.py': 'from lib import two\n\ndef test_ok():\n    assert two() == 2\n\ndef test_bad():\n    assert two() == 3\n' });
   const r = runner(ws);
   assert.equal(r.code, 1);
-  assert.match(r.out, /1 failed, 1 passed in [\d.]+s/, 'pytest\'s own summary');
+  assert.match(r.out.replace(/\x1b\[[0-9;]*m/g, ''), /1 failed, 1 passed in [\d.]+s/, 'pytest\'s own summary'); // CI may force colour
   assert.doesNotMatch(r.out, /built-in runner/);
 });
 

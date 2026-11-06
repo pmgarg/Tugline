@@ -358,6 +358,8 @@ export interface HardenedBaseOptions {
   hideSockets?: boolean;
   /** keep the host's resolver configuration visible (network "host") */
   keepResolver?: boolean;
+  /** tests only: the resolver files to keep (default: /etc/resolv.conf's target when it is inside a hidden dir) */
+  resolverFiles?: string[];
 }
 
 /** Files under /run that must stay readable when /run is hidden (the resolver configuration /etc/resolv.conf points at). */
@@ -400,10 +402,15 @@ export function hardenedBwrapBase(o: HardenedBaseOptions): string[] {
       }
       if (st.isSymbolicLink() || !st.isDirectory()) continue; // /var/run → /run is covered by /run
       if (within(o.workspace, d)) continue; // never hide the workspace itself
-      a.push('--tmpfs', d, '--remount-ro', d);
+      a.push('--tmpfs', d);
       hidden.push(d);
     }
-    if (o.keepResolver) for (const f of resolverFiles()) a.push('--ro-bind', f, f);
+    // the resolver files are bound back while the tmpfs is still writable (bwrap creates their parent directories
+    // in it), and only then is it made read-only. In the other order every command with host networking failed
+    // where /etc/resolv.conf points into /run (systemd-resolved: "Can't mkdir parents for
+    // /run/systemd/resolve/stub-resolv.conf: Read-only file system").
+    if (o.keepResolver) for (const f of o.resolverFiles ?? resolverFiles()) a.push('--ro-bind', f, f);
+    for (const d of hidden) a.push('--remount-ro', d);
   }
   for (const d of o.writable ?? []) a.push('--bind-try', d, d);
   a.push(o.filesystem === 'read-only' ? '--ro-bind' : '--bind', o.workspace, o.workspace);

@@ -82,6 +82,14 @@ jobs:
           bwrap --ro-bind / / --dev /dev -- /bin/true
           echo "TUG_REQUIRE_BWRAP=1" >> "$GITHUB_ENV"
 
+      - name: VS Code for the vscode-host conformance driver (one download, before the parallel tests)
+        # Several test files start the extension host at once; without a cached VS Code they all downloaded
+        # and unzipped it into the same folder concurrently ("Failed to unzip archive", ENOTEMPTY).
+        if: runner.os == 'Linux'
+        working-directory: vscode
+        run: |
+          node -e "require('@vscode/test-electron').downloadAndUnzipVSCode({ version: 'stable', cachePath: '.vscode-test' }).then((p) => console.log(p))"
+
       - name: Test (parallel group)
         # The suite drives bash, POSIX tools and Unix process groups, and its sandbox tests assume Linux
         # (bwrap). On Windows and macOS it runs for information until the platform ports and the macOS

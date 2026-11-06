@@ -17,7 +17,7 @@
  *    head is re-read from the last line before appending. Across processes, the
  *    re-read and the append happen under a lock file (`<session>.jsonl.lock`,
  *    O_EXCL, holding the owner's pid: a dead owner's lock is taken at once, a live
- *    owner is waited for up to ~1 s, a lock older than 10 s is stale), so several surfaces on
+ *    owner is waited for up to 10 s, a lock older than 10 s is stale), so several surfaces on
  *    one session (R14) keep one valid chain;
  *  - the chain is tamper-evident, not authenticated: anyone who can write the file
  *    can recompute it, and truncating a suffix leaves a valid chain. For audit,
@@ -82,13 +82,15 @@ function ownerAlive(lock: string): boolean {
 
 /**
  * Run `fn` holding `<file>.lock` (O_EXCL, holds the owner's pid). A lock whose owner process is dead
- * (a crash) is taken at once; a live owner is waited for up to ~1 s (each record is one short write),
+ * (a crash) is taken at once; a live owner is waited for up to 10 s (each record is one short write),
  * a lock older than 10 s is stale. If the lock cannot be had, `fn` still runs: journaling never blocks a run.
  */
 function withFileLock<T>(file: string, fn: () => T): T {
   const lock = `${file}.lock`;
   let fd: number | undefined;
-  const deadline = Date.now() + 1000;
+  // CI found it (GitHub, 3 writers under load): with a 1 s wait a writer gave up and appended without the lock,
+  // breaking the chain. A live owner holds the lock for one short write, so waiting up to the stale age is safe.
+  const deadline = Date.now() + 10_000;
   for (;;) {
     try {
       fd = fs.openSync(lock, 'wx', 0o600);
@@ -97,13 +99,21 @@ function withFileLock<T>(file: string, fn: () => T): T {
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== 'EEXIST') break;
       let stale = false;
+      let seen: fs.Stats | undefined;
       try {
-        stale = !ownerAlive(lock) || Date.now() - fs.statSync(lock).mtimeMs > 10_000;
+        seen = fs.statSync(lock);
+        stale = !ownerAlive(lock) || Date.now() - seen.mtimeMs > 10_000;
       } catch {
-        stale = true;
+        continue; // released meanwhile: try again
       }
       if (stale) {
-        fs.rmSync(lock, { force: true });
+        // remove only the lock we judged: another waiter may already have replaced it with its own
+        try {
+          const now = fs.statSync(lock);
+          if (now.ino === seen.ino && now.mtimeMs === seen.mtimeMs) fs.rmSync(lock, { force: true });
+        } catch {
+          /* gone already */
+        }
         continue;
       }
       if (Date.now() > deadline) break;
