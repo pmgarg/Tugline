@@ -26,7 +26,11 @@ const parallel = [...files.filter((f) => !SERIAL.test(f)).map((f) => path.join('
 const want = process.argv.slice(2);
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'oh-run-'));
 const env = { ...process.env, TMPDIR: tmpRoot, TMP: tmpRoot, TEMP: tmpRoot };
-const run = (list, extra) => (list.length ? spawnSync(process.execPath, ['--import', 'tsx', '--test', ...extra, ...list], { stdio: 'inherit', env }).status ?? 1 : 0);
+// A test that leaves a child process or socket open must not hold its file (and so the whole run) open until the CI
+// job limit: each file exits once its tests are done, and a test with no limit of its own fails by name after 10 min.
+// On CI the TAP reporter streams each result as it finishes (Node 24's default reporter printed nothing for 88 min).
+const guard = ['--test-force-exit', '--test-timeout=600000', ...(process.env.CI ? ['--test-reporter=tap'] : [])];
+const run = (list, extra) => (list.length ? spawnSync(process.execPath, ['--import', 'tsx', '--test', ...guard, ...extra, ...list], { stdio: 'inherit', env }).status ?? 1 : 0);
 const cleanup = () => {
   if (process.env.TUG_KEEP_TMP === '1') return void console.log(`test temp root kept: ${tmpRoot}`);
   try {
