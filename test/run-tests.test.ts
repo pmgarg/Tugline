@@ -55,7 +55,7 @@ test('runner: a group that keeps printing is not stopped, and a passing run exit
   try {
     const r = await runner(root, 60_000);
     assert.equal(r.code, 0, r.out);
-    assert.match(r.out, /# pass 1/, 'the fixture test really ran');
+    assert.match(r.out, /(# |ℹ )pass 1\b/, 'the fixture test really ran'); // TAP (Node 20/22) or spec (Node 24)
     assert.doesNotMatch(r.out, /stalled/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
