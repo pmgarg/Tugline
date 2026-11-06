@@ -692,7 +692,7 @@ test('security: page text containing </untrusted_web_content> cannot close the e
 
 // ------------------------------------------------------------ G4: attached-mode request guard (CDP Fetch)
 
-test('G4: attached mode checks every request and redirect hop of our tab via CDP; the user\'s other tabs are untouched', async () => {
+test('G4: attached mode checks every request and redirect hop of our tab via CDP; the user\'s other tabs are untouched', async (ctx) => {
   const L = site.url.replace('127.0.0.1', 'localhost');
   const chrome = await startDebugChrome();
   const { chromium } = await import('playwright');
@@ -780,8 +780,13 @@ test('G4: attached mode checks every request and redirect hop of our tab via CDP
       hits.push(req.url!);
       res.writeHead(200, { 'content-type': 'image/png' }).end(fs.readFileSync(path.join(SITE_DIR, 'files/dot.png')));
     });
-    await new Promise<void>((r) => probe.listen(0, '127.0.0.2', () => r()));
-    try {
+    // macOS has only 127.0.0.1 on the loopback unless an alias is added; a failed listen must not leave Chrome running
+    const probeUp = await new Promise<boolean>((r) => {
+      probe.once('error', () => r(false));
+      probe.listen(0, '127.0.0.2', () => r(true));
+    });
+    if (!probeUp) ctx.diagnostic('127.0.0.2 is not available on this machine: the cross-site frame check is skipped');
+    else try {
       const port = (probe.address() as { port: number }).port;
       const o = new BrowserSession({
         sessionId: `g4f-${Date.now()}`,
