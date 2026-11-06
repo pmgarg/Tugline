@@ -2,7 +2,7 @@
   "name": "tugline",
   "displayName": "Tugline: coding agent for any model",
   "description": "A coding agent that runs on the model you choose (Ollama, LM Studio, vLLM, your company server or any OpenAI-compatible API). Sandboxed commands, reviewable edits, and runs verified by your own tests.",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "publisher": "tugline",
   "license": "MIT",
   "repository": {

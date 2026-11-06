@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.5 (pre-release, with CLI 1.2.0-beta.5): fixes from CI on GitHub's runners
+- **The visible terminal:** on some machines VS Code did not report that a command had started, so every command waited for the 120-second timeout. Tugline now recognises the start reliably. If a command still does not start within 15 seconds, Tugline cancels it, says that it did not run, and runs commands in the background from then on.
+- **The Linux sandbox:** every sandboxed command failed when `$XDG_RUNTIME_DIR` is `/run/user/<uid>`, the normal Linux desktop setup. Commands with network access failed on systems using systemd-resolved. Both are fixed.
+- **The session log:** under heavy load a writer could skip the lock and break the log's hash chain. It now waits for the lock.
+
 ## 1.2.4 (pre-release, with CLI 1.2.0-beta.4): first public release as Tugline
 Tugline was developed privately as "OpenHarness". This is the first public pre-release.
 

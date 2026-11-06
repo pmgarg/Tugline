@@ -45,7 +45,7 @@ export { OhClient, type ClientHandlers } from '../server/client.js';
 export type { SessionInfo, RunSummary, RemoteResult } from '../server/protocol.js';
 export { startServer } from '../server/server.js';
 
-export const SDK_VERSION = '1.2.0-beta.4';
+export const SDK_VERSION = '1.2.0-beta.5';
 
 // ------------------------------------------------------------ tools
 

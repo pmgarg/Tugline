@@ -1,6 +1,6 @@
 {
   "name": "tugline",
-  "version": "1.2.0-beta.4",
+  "version": "1.2.0-beta.5",
   "description": "Tugline: a coding agent that runs on any OpenAI-compatible model (local, company-hosted or cloud), with an OS sandbox, reviewable edits and runs verified by your own tests.",
   "license": "MIT",
   "type": "module",
