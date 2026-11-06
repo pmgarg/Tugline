@@ -255,7 +255,8 @@ async function launchUserBrowser(): Promise<void> {
   await opts.fill('#sites', 'localhost');
   await opts.click('#save');
   const hub = extensionHub(fixture.home!)!;
-  for (let i = 0; i < 100 && !hub.connected; i++) await new Promise((r) => setTimeout(r, 100));
+  // up to 30 s: the extension retries every 3 s, and a loaded runner can miss the first attempts
+  for (let i = 0; i < 300 && !hub.connected; i++) await new Promise((r) => setTimeout(r, 100));
   assert.ok(hub.connected, 'the extension paired with tug serve');
   await opts.waitForFunction(() => /connected/.test(document.getElementById('status')!.textContent ?? ''), null, { timeout: 5000 });
   await opts.close();
