@@ -210,6 +210,12 @@ jobs:
           set -o pipefail
           note() { grep -h '^\[e2e\] note:' e2e*.log 2>/dev/null | sed 's/^/::warning::/' || true; }
           if xvfb-run -a node test/runTest.mjs 2>&1 | tee e2e.log; then note; exit 0; fi
+          # VS Code never started (resolving or downloading it timed out): run everything once more
+          if ! grep -q '^\[e2e\]' e2e.log; then
+            echo "::warning::VS Code did not start (download or version lookup failed); retrying the whole run once"
+            rc=0; xvfb-run -a node test/runTest.mjs 2>&1 | tee e2e-retry.log || rc=$?
+            note; exit $rc
+          fi
           failed=$(grep -oP '^\[e2e\] ✗ \K[^:]+' e2e.log | sort -u)
           n=$(printf '%s\n' "$failed" | grep -c . || true)
           if [ "$n" -eq 0 ] || [ "$n" -gt 3 ]; then exit 1; fi
