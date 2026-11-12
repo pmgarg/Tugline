@@ -14,13 +14,13 @@ import { clampChild, ChildRefusal } from '../src/core/agent/workflow/clamp.js';
 import { parseWorkflowSpec, codeFields, renderCommand } from '../src/core/agent/workflow/spec.js';
 import { runWorkflow, sanitizeText, readRun } from '../src/core/agent/workflow/runner.js';
 import { builtinTools } from '../src/core/tools/index.js';
-import { startMockServer, testConfig, tmpWorkspace, type MockReply } from './helpers.js';
+import { startMockServer, testConfig, tmpWorkspace, type MockReply, withoutEnvironment } from './helpers.js';
 import type { PermissionRequest } from '../src/core/types.js';
 import type { ToolDef } from '../src/core/tools/types.js';
 
 const BASE = { permissionMode: 'yolo', agent: { repoMapTokens: 0, backgroundCompaction: false, requireVerification: false, harnessCheck: 'off' }, checkpoints: { enabled: false } };
 const sys = (b: any) => String(b.messages[0]?.content ?? '');
-const firstUser = (b: any) => String(b.messages.find((m: any) => m.role === 'user')?.content ?? '');
+const firstUser = (b: any) => withoutEnvironment(String(b.messages.find((m: any) => m.role === 'user')?.content ?? ''));
 const toolMsgs = (b: any) => b.messages.filter((m: any) => m.role === 'tool');
 const names = (b: any) => (b.tools ?? []).map((t: any) => t.function.name) as string[];
 const journalLines = (a: Agent) => fs.readFileSync(a.journalFile!, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
