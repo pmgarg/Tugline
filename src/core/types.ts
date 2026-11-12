@@ -167,6 +167,14 @@ export interface RunStats {
   completionTokens: number;
   costUsd: number;
   durationMs: number;
+  /** Time from the start of the run to its first model request (setup: prompt, repo map, checkpoint). */
+  setupMs?: number;
+  /** Time to the first piece of the run's first model reply (mostly the server processing the prompt). */
+  firstTokenMs?: number;
+  /** Time spent waiting for the model, over all of the run's main calls. */
+  modelMs?: number;
+  /** Prompt tokens the server reported as served from its prompt cache (when it reports them). */
+  cachedTokens?: number;
   filesChanged: string[];
   commandsRun: { command: string; exitCode: number | null; afterLastEdit: boolean }[];
   /** v1.1 R2: what each command checked (trusted or not, file versions, editor/disk divergence) */

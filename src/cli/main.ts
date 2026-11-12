@@ -501,7 +501,9 @@ class TerminalUI {
       case 'run_end': {
         this.endStream();
         const s = e.stats;
-        this.out.write(c.dim(`  [${e.stopReason} · ${s.turns} turns · ${s.toolCalls} tools · ${s.promptTokens + s.completionTokens} tok${s.costUsd ? ` · $${s.costUsd.toFixed(4)}` : ''} · ${(s.durationMs / 1000).toFixed(1)}s]\n`));
+        const ttft = s.firstTokenMs !== undefined ? ` · first reply ${(s.firstTokenMs / 1000).toFixed(1)}s` : '';
+        const cached = s.cachedTokens !== undefined ? ` (${s.cachedTokens} cached)` : '';
+        this.out.write(c.dim(`  [${e.stopReason} · ${s.turns} turns · ${s.toolCalls} tools · ${s.promptTokens + s.completionTokens} tok${cached}${s.costUsd ? ` · $${s.costUsd.toFixed(4)}` : ''} · ${(s.durationMs / 1000).toFixed(1)}s${ttft}]\n`));
         if (e.stopReason !== 'end_turn' && e.finalText) this.out.write(c.yellow(`  ${e.finalText}\n`));
         // v1.1 R2: whether the work was verified, separate from why the loop stopped
         if (e.completion && e.completion.state !== 'not_applicable') {

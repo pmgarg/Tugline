@@ -20,7 +20,8 @@ Tugline is a coding agent that runs on **the model you choose**. It works with a
   - Several chats at once.
   - Queue or steer a running agent.
   - `@` to add files, problems, terminal output or a URL; `/` for commands and skills.
-  - Paste images.
+  - Paste images. Paste a long log or stack trace: it becomes one attachment, and when it is larger than the model's context, the agent gets its first and last lines and can search the rest.
+  - Under each answer: how long it took, and where the time went (setup, the model's first reply, prompt tokens the server reused from its cache).
 - **Modes:**
   - *Ask first*: approve every edit and command.
   - *Accept edits*: edits apply without asking; commands still ask.
@@ -49,11 +50,12 @@ Tugline is a coding agent that runs on **the model you choose**. It works with a
 
 ## Get started
 1. Open **Tugline** in the activity bar.
-2. Run **Tugline: Configure LLM Endpoint** and pick one:
-   - **Ollama / LM Studio / llama.cpp:** start the server and pick a model. The context window is read automatically.
-   - **Your company's server (vLLM, SGLang, a gateway):** enter its base URL and API key.
-   - **OpenRouter or another hosted API:** paste your key. It is stored in VS Code's secret storage, never in settings files.
+2. Connect your model, all inside the panel:
+   - **Ollama / LM Studio / llama.cpp:** start the server. The panel finds it and lists its models; click one. The context window is read automatically.
+   - **Your company's server (vLLM, SGLang, Open WebUI, a gateway) or a hosted API:** open **Settings** (the gear) → **Model**. Enter the base URL and API key, click **Load**, pick a model, then **Save and test**. The key is kept in VS Code's secret storage, never in settings files. If you enter the address of a chat website rather than its API, Tugline says so and offers the API address it finds on the same server.
 3. Ask for something, for example "Fix the failing tests". Tugline reads the code, proposes edits, runs the tests and reports what it verified.
+
+![Settings inside the panel: provider, base URL, API key, model list and a connection test](images/settings.png)
 
 Models with native tool calling work best. For models without it, Tugline switches to a text tool protocol automatically.
 

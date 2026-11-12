@@ -36,7 +36,22 @@ From source instead: `npm install && npm run build && npm link`.
 
 Install **Tugline** from the VS Code Marketplace (Extensions view, search "Tugline"). For Cursor, Windsurf or VSCodium, install it from Open VSX. From source: `cd vscode && npm install && npm run package`, then `code --install-extension tugline-*.vsix`.
 
-Open the **Tugline** icon in the activity bar. With a local server running (Ollama, LM Studio or llama.cpp), setup is mouse-only: if the endpoint does not answer or the model is not installed, the chat panel shows a card with a button per detected local server and per installed chat model (tool-capable coder models first). One click sets the model and tests the connection; with Ollama the context window is read from Ollama itself. For a company or custom URL, run **Tugline: Configure LLM Endpoint**: pick a preset (Ollama, LM Studio, llama.cpp, vLLM, OpenRouter, DeepSeek or custom), enter the API key (stored in VS Code SecretStorage) and choose a model. The connection is probed and the best tool-calling mode is offered. The extension needs VS Code 1.93 or later.
+Open the **Tugline** icon in the activity bar. Everything is set inside the chat panel:
+- **A local server** (Ollama, LM Studio or llama.cpp): if the endpoint does not answer or the model is not installed, the panel shows a card with a button per detected server and per installed chat model (tool-capable coder models first). One click sets the model and tests the connection; with Ollama the context window is read from Ollama itself.
+- **A company server or a hosted API:** open **Settings** (the gear in the panel) → **Model**. Pick the provider, enter the base URL and API key (kept in VS Code's secret storage), click **Load** and pick a model, then **Save and test**. If the address you entered is a chat website rather than its API, Tugline says so and offers the API address it found on the same server.
+- **Mode, model and reasoning effort** for a chat are the chips under the message box.
+
+Under each answer, a line shows how long the turn took and where the time went (Tugline's setup, the model's first reply, prompt tokens the server reused from its cache). The extension needs VS Code 1.93 or later.
+
+## Supported platforms
+
+| | CLI and VS Code extension | OS sandbox for commands |
+|---|---|---|
+| **Linux** | Supported. Every CI run tests the CLI (Node 20, 22, 24), the extension in a real VS Code, and real browsers | bubblewrap, else Landlock; tested in CI |
+| **macOS** | Supported. CI installs and runs the CLI and runs the unit tests on macOS | Seatbelt, once `bash scripts/device-checks/sandbox-macos.sh` has passed on your Mac (or `sandbox.macosSeatbelt: true`); until then commands run unconfined (in the default mode, only after your approval) |
+| **Windows** | Works: CI installs and runs the CLI on Windows; the full test suite does not cover Windows yet | None built in: commands run unconfined (in the default mode, only after your approval); use `sandbox.runner: "docker"` for isolation |
+
+`tug doctor`, the CLI banner and the panel's first notice say which sandbox is in force. For unattended runs, `"shell": { "requireSandbox": true }` makes commands fail closed when no sandbox is available.
 
 ## Connect to your model
 

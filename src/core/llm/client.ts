@@ -97,6 +97,8 @@ export interface CompletionResult {
   finishReason: string;
   usage: Usage;
   latencyMs: number;
+  /** Time from the request to the first piece of the reply (text, reasoning or a tool call): the server's prompt processing, mostly. */
+  ttftMs?: number;
   dialect: 'native' | 'text';
   /** The visible reply was empty because generation was cut by max_tokens. */
   emptyDueToLength: boolean;
@@ -352,8 +354,10 @@ export class LLMClient {
     const started = Date.now();
     let attempts = 0;
     let transientRetries = 0;
+    let attemptStarted = started;
     for (;;) {
       attempts++;
+      attemptStarted = Date.now();
       const mode = this.dialect;
       const body = this.buildBody(req, mode);
       const timeout = this.profile.timeoutMs ?? 600_000;
@@ -417,7 +421,7 @@ export class LLMClient {
         }
         throw e;
       }
-      const result = this.finish(raw, req, mode, started, attempts);
+      const result = this.finish(raw, req, mode, started, attempts, attemptStarted);
       // Auto mode: first successful native call with leaked text tool-calls → switch.
       if (this.profile.toolMode === 'auto' && this.resolvedMode === null) {
         this.resolvedMode = result.dialect === 'text' && raw.nativeCalls.length === 0 && (req.tools?.length ?? 0) > 0 ? 'text' : raw.nativeCalls.length ? 'native' : null;
@@ -454,6 +458,7 @@ export class LLMClient {
     let finishReason = '';
     let usage: Usage | undefined;
     let timings: any;
+    let firstAt: number | undefined;
     const calls = new Map<number, { id?: string; name: string; args: string }>();
     // Streamed <think> handling: route think content to reasoning, not text deltas.
     let inThink = false;
@@ -525,6 +530,7 @@ export class LLMClient {
         const choice = j.choices?.[0];
         if (!choice) continue;
         const d = choice.delta ?? choice.message ?? {};
+        if (firstAt === undefined && ((typeof d.content === 'string' && d.content) || d.reasoning_content || d.reasoning || d.tool_calls?.length)) firstAt = Date.now();
         const r = d.reasoning_content ?? d.reasoning;
         if (typeof r === 'string' && r) {
           reasoning += r;
@@ -557,10 +563,10 @@ export class LLMClient {
     }
     if (pendingTag && !inThink) req.onTextDelta?.(pendingTag);
     const nativeCalls = [...calls.entries()].sort((a, b) => a[0] - b[0]).map(([, c]) => ({ id: c.id, name: c.name, args: c.args }));
-    return { content, reasoning, nativeCalls, finishReason: finishReason || 'stop', usage };
+    return { content, reasoning, nativeCalls, finishReason: finishReason || 'stop', usage, firstAt };
   }
 
-  private finish(raw: RawReply, req: CompletionRequest, mode: 'native' | 'text', started: number, attempts: number): CompletionResult {
+  private finish(raw: RawReply, req: CompletionRequest, mode: 'native' | 'text', started: number, attempts: number, attemptStarted = started): CompletionResult {
     const { visible: noThink, thinking } = splitThinking(raw.content);
     let reasoning = [raw.reasoning, thinking].filter(Boolean).join('\n');
     const known = (req.tools ?? []).map((t) => t.name);
@@ -605,7 +611,9 @@ export class LLMClient {
       estimated: true,
     };
     const emptyDueToLength = raw.finishReason === 'length' && !text.trim() && toolCalls.length === 0;
-    return { text, reasoning, toolCalls, finishReason: raw.finishReason, usage, latencyMs: Date.now() - started, dialect, emptyDueToLength, attempts, model: this.profile.model };
+    const now = Date.now();
+    // the first reply is timed from the attempt that answered (not retries or backoff), and only for streamed replies
+    return { text, reasoning, toolCalls, finishReason: raw.finishReason, usage, latencyMs: now - started, ttftMs: raw.firstAt !== undefined ? raw.firstAt - attemptStarted : undefined, dialect, emptyDueToLength, attempts, model: this.profile.model };
   }
 }
 
@@ -615,6 +623,8 @@ interface RawReply {
   nativeCalls: { id?: string; name: string; args: string }[];
   finishReason: string;
   usage?: Usage;
+  /** when the first piece of the reply (text, reasoning or a tool call) arrived */
+  firstAt?: number;
 }
 
 export function mapUsage(u: any, timings?: any): Usage | undefined {

@@ -53,6 +53,8 @@ exports.run = async function () {
   const ws = process.env.TUG_E2E_WORKSPACE;
   const log = [];
   const shot = async (name, wait = 1500) => {
+    // listing images: no toasts from the test machine (running as root, extensions disabled)
+    if (process.env.TUG_TOUR_MARKETING) await vscode.commands.executeCommand('notifications.clearAll').then(undefined, () => undefined);
     await sleep(wait);
     try {
       execFileSync('import', ['-window', 'root', path.join(OUT, `${name}.png`)]);
@@ -139,6 +141,10 @@ exports.run = async function () {
       if (settled) break;
     }
     await shot('06-chat-after-run');
+    // the settings page at the same width (the Marketplace listing shows it)
+    await cmd('tugline.showView', 'settings');
+    await shot('06b-settings', 2500);
+    await cmd('tugline.showView', 'chat');
     await cmd('workbench.action.closeAllEditors');
     await vscode.window.showTextDocument(vscode.Uri.file(path.join(ws, 'calc.py')));
     await shot('07-editor-pending-change-keep-undo');

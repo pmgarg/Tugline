@@ -186,7 +186,8 @@ test('N43 AC1: (VS Code) /mode, the settings value and the picker offer auto and
   assert.equal(governedConfig({ workspace: ws, get: get('nonsense'), env: { ...process.env, TUG_MANAGED_POLICY: '' }, noUserConfig: true, systemPath: NOSYS }).permissionMode, 'ask');
   // the picker (webview) and the settings schema list exactly the core's modes
   const mainJs = fs.readFileSync('vscode/media/main.js', 'utf8');
-  for (const m of PERMISSION_MODES) assert.match(mainJs, new RegExp(`<option value="${m}">`));
+  const menuModes = [...(mainJs.match(/const MODES = \[([\s\S]*?)\];/)?.[1] ?? '').matchAll(/value: '(\w+)'/g)].map((x) => x[1]);
+  assert.deepEqual(menuModes, [...PERMISSION_MODES], 'the composer\'s mode menu');
   const pkg = JSON.parse(fs.readFileSync('vscode/package.json', 'utf8'));
   const prop = pkg.contributes.configuration.properties?.['tugline.permissionMode'] ?? pkg.contributes.configuration.find?.((c: any) => c.properties['tugline.permissionMode'])?.properties['tugline.permissionMode'];
   assert.deepEqual(prop.enum, [...PERMISSION_MODES]);

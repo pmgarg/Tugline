@@ -2,7 +2,7 @@
   "name": "tugline",
   "displayName": "Tugline: coding agent for any model",
   "description": "A coding agent that runs on the model you choose (Ollama, LM Studio, vLLM, your company server or any OpenAI-compatible API). Sandboxed commands, reviewable edits, and runs verified by your own tests.",
-  "version": "1.2.7",
+  "version": "1.4.0",
   "publisher": "tugline",
   "license": "MIT",
   "repository": {
@@ -97,6 +97,10 @@
         "command": "tugline.configure",
         "title": "Tugline: Configure LLM Endpoint",
         "icon": "$(gear)"
+      },
+      {
+        "command": "tugline.configureWizard",
+        "title": "Tugline: Configure LLM Endpoint (step by step)"
       },
       {
         "command": "tugline.testConnection",
@@ -395,7 +399,7 @@
         {
           "command": "tugline.newChat",
           "when": "view == tugline.chat",
-          "group": "navigation@1"
+          "group": "1_chat@1"
         },
         {
           "command": "tugline.undo",
@@ -405,7 +409,7 @@
         {
           "command": "tugline.configure",
           "when": "view == tugline.chat",
-          "group": "navigation@2"
+          "group": "1_chat@2"
         },
         {
           "command": "tugline.history.search",
@@ -425,7 +429,7 @@
         {
           "command": "tugline.emergencyStop",
           "when": "view == tugline.chat",
-          "group": "navigation@3"
+          "group": "2_stop@1"
         },
         {
           "command": "tugline.agents.newWorktreeSession",
@@ -1115,6 +1119,5 @@
     "color": "#1B2E6B",
     "theme": "dark"
   },
-  "pricing": "Free",
-  "preview": true
+  "pricing": "Free"
 }

@@ -6,7 +6,7 @@ import type { ToolDef } from '../src/core/tools/types.js';
 import type { AgentEvent, ChatMessage } from '../src/core/types.js';
 import { estimateTokens } from '../src/core/util/text.js';
 import { bm25Rank } from '../src/core/tools/search.js';
-import { startMockServer, testConfig, tmpWorkspace, lastToolResult } from './helpers.js';
+import { startMockServer, testConfig, tmpWorkspace, lastToolResult, withoutEnvironment } from './helpers.js';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const toolNames = (body: any): string[] => (body.tools ?? []).map((t: any) => t.function.name);
@@ -294,7 +294,7 @@ test('D12 AC1: a steer sent during a long tool call appears in the next request'
 test('D12 AC2: queued prompts run after the current run, in order', async () => {
   const ws = tmpWorkspace({});
   let agent!: Agent;
-  const srv = await startMockServer((body) => ({ content: `did: ${body.messages.filter((m: any) => m.role === 'user').at(-1).content}` }));
+  const srv = await startMockServer((body) => ({ content: `did: ${withoutEnvironment(body.messages.filter((m: any) => m.role === 'user').at(-1).content)}` }));
   agent = await Agent.create({
     workspace: ws, config: testConfig(srv.url, NO_MAP), mcp: false,
     ui: { onEvent: (e) => { if (e.type === 'run_start' && e.prompt === 'first') { agent.enqueue('second'); agent.enqueue('third'); } } },
@@ -308,14 +308,14 @@ test('D12 AC2: queued prompts run after the current run, in order', async () => 
   await agent.idle();
   await srv.close();
   assert.deepEqual(finals, ['did: first', 'did: second', 'did: third']);
-  const users = srv.requests.at(-1).messages.filter((m: any) => m.role === 'user').map((m: any) => m.content);
+  const users = srv.requests.at(-1).messages.filter((m: any) => m.role === 'user').map((m: any) => withoutEnvironment(m.content));
   assert.deepEqual(users, ['first', 'second', 'third']);
 });
 
 test('D12: a steer that arrives after the final LLM call becomes the next prompt', async () => {
   const ws = tmpWorkspace({});
   let agent!: Agent;
-  const srv = await startMockServer((body) => ({ content: `re: ${body.messages.at(-1).content}` }));
+  const srv = await startMockServer((body) => ({ content: `re: ${withoutEnvironment(body.messages.at(-1).content)}` }));
   agent = await Agent.create({ workspace: ws, config: testConfig(srv.url, NO_MAP), mcp: false, ui: { onEvent: (e) => { if (e.type === 'assistant_message' && e.text === 're: go') agent.steer('one more thing'); } } });
   await agent.run('go');
   await agent.idle();

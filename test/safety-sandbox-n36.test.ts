@@ -561,7 +561,7 @@ test('N36 SAC2: sandbox.require with no runner available: commands are refused w
   assert.ok(wrap, 'a refusing wrapper, not "no wrapper"');
   const r = await execCommand({ shellCommand: `touch ${ws}/ran`, cwd: ws, timeoutMs: 10_000, env: process.env, wrap });
   assert.equal(r.exitCode, 126);
-  assert.match(r.output, /Tugline: command not run: no OS sandbox available on linux.*Sandboxing is required \(sandbox\.require/);
+  assert.match(r.output, new RegExp(`Tugline: command not run: no OS sandbox available on ${process.platform}.*Sandboxing is required \\(sandbox\\.require`));
   assert.equal(fs.existsSync(path.join(ws, 'ran')), false);
   // an explicitly requested runner that is missing is refused too (seatbelt is not on Linux), even without require
   const explicit = testConfig('http://127.0.0.1:9/v1', { sandbox: { runner: 'seatbelt' } });

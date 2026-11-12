@@ -1019,7 +1019,8 @@ test('N34 RF10: an external member cannot read the user\'s secrets anywhere in $
     try {
       const result = t.board.find((x) => x.id === 'fix')!.result!;
       assert.ok(!/PRIVATE-KEY-MATERIAL|TOKEN-123|CFG-SECRET/.test(result), result);
-      assert.match(result, /No such file or directory/);
+      // hidden (Linux bwrap: "No such file or directory") or refused (macOS Seatbelt: "Operation not permitted")
+      assert.match(result, /No such file or directory|Operation not permitted/);
     } finally {
       await t.done();
     }

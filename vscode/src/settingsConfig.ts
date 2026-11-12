@@ -206,3 +206,12 @@ export function clientProfile(cfg: HarnessConfig, name?: string): ModelProfile {
 export function autocompleteAdmission(cfg: HarnessConfig, profileName?: string): AdmitHook {
   return rawAdmission(cfg, { kind: 'fim', role: 'autocomplete', pricing: clientProfile(cfg, profileName).pricing });
 }
+
+/** Two URLs share scheme, host and port (the settings view sends a saved API key only to its own server). */
+export function sameOrigin(a: string, b: string): boolean {
+  try {
+    return new URL(a).origin === new URL(b).origin;
+  } catch {
+    return false;
+  }
+}

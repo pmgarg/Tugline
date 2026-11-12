@@ -150,7 +150,7 @@ export function buildSystemPrompt(p: PromptInputs): string {
   parts.push(
     `# Environment
 - Workspace (current directory, relative paths resolve here): ${p.workspace}
-- OS: ${os.platform()} ${os.release()} (${os.arch()}); date: ${new Date().toISOString().slice(0, 10)}
+- OS: ${os.platform()} ${os.release()} (${os.arch()}); date: ${localIsoDate()}
 - Model: ${p.model}
 - ${sh.mode === 'allowlist' ? `Commands run WITHOUT a shell (no pipes, ;, &&, redirects). Allowed programs: ${sh.allowlist.join(', ')}.` : `Commands run in ${process.platform === 'win32' ? 'cmd.exe' : 'bash'}${requestedRunner(p.config) === 'docker' || requestedRunner(p.config) === 'podman' ? ` inside a ${requestedRunner(p.config) === 'docker' ? 'Docker' : 'Podman'} sandbox (image ${sh.dockerImage}, network ${sh.dockerNetwork})` : ''}.`}
 ${p.config.permissions.protectedPaths.length ? `- Protected paths (writes are refused): ${p.config.permissions.protectedPaths.join(', ')}` : ''}
@@ -186,3 +186,8 @@ export const EXPLORE_ROLE = `You are a fast, read-only research subagent. Answer
 Be efficient: search first, read only relevant ranges. Your final message is returned to the agent that called you: make it a complete, self-contained answer with exact file paths and line numbers.`;
 
 export const GENERAL_ROLE = `You are a subagent handling one delegated sub-task with a fresh context. Complete it fully with your tools, verify the result, then reply with a concise report: what you did, files changed, verification results, and anything unresolved. Your final message is all the calling agent will see.`;
+
+/** Today in the user's time zone (YYYY-MM-DD): the UTC date is a day off around midnight away from UTC. */
+function localIsoDate(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}

@@ -64,7 +64,8 @@ import { providerTools } from '../tools/registry.js';
 import '../tools/providers.js';
 import { diskHost, type WorkspaceHost } from '../host/workspace.js';
 import { globalExtensions, type AgentApi, type AgentExtension, type AfterToolResult, type ApprovalDecision, type TurnGate } from './extensions.js';
-import { stabilizeSystemPrompt } from '../cache/prefix.js'; // WS10 N10
+import { stabilizeSystemPrompt, stableSystemPrompt } from '../cache/prefix.js'; // WS10 N10
+import { fitLargeInput } from './largeInput.js';
 import { promptCacheSettings } from '../cache/settings.js'; // WS10 N10
 
 export interface AgentUI {
@@ -299,6 +300,8 @@ export class Agent {
   private abortCtl?: AbortController;
   private running = false;
   private stats: RunStats = emptyStats();
+  /** when the current run started (setupMs is measured from here) */
+  private runStartedAt = 0;
   private lastEditSeq = 0;
   /** R2: when the last edit happened (a background job only counts if it started after it) */
   private lastEditAt = 0;
@@ -736,7 +739,7 @@ export class Agent {
     // surface (tug serve config/set, ACP set_mode) reports the mode really in effect
     if (forbiddenModes(this.config.managed?.policy ?? {}).includes(m)) m = 'ask';
     this.policy.mode = m;
-    if (this.messages[0]?.role === 'system') this.messages[0].content = this.systemPrompt();
+    if (this.messages[0]?.role === 'system') this.messages[0].content = this.sentSystemPrompt();
     this.emit({ type: 'notice', level: m === 'yolo' ? 'warn' : 'info', message: m === 'yolo' ? `permission mode: yolo. WARNING: commands and MCP tools now run WITHOUT approval and without the auto-mode classifier (hard denies, protected paths and the sandbox still apply)` : `permission mode: ${m}` });
     // N43: extensions (auto mode's denial tracking) see every switch
     void this.runExt('onModeChange', (e) => e.onModeChange!(this.api(), from, requested));
@@ -772,7 +775,7 @@ export class Agent {
    */
   loadHistory(msgs: ChatMessage[], brief?: TaskBrief): void {
     this.cancelPendingCompaction();
-    this.messages = [{ role: 'system', content: this.systemPrompt() }, ...msgs.filter((m) => m.role !== 'system')];
+    this.messages = [{ role: 'system', content: this.sentSystemPrompt() }, ...msgs.filter((m) => m.role !== 'system')];
     const attached = (msgs as { taskBrief?: TaskBrief }).taskBrief;
     // R14: the durable state stored with the journal these messages came from
     const state = (msgs as { sessionState?: SessionState }).sessionState;
@@ -885,6 +888,11 @@ export class Agent {
       const env = untrustedEnvelope(contentToText(m.content));
       if (env) this.taint = { source: env, index: i };
     });
+  }
+
+  /** The system prompt as sent: without the volatile environment lines (they ride on the user message; prefix cache). */
+  private sentSystemPrompt(): string {
+    return stableSystemPrompt(this.systemPrompt(), promptCacheSettings(this.config).stableEnvironment);
   }
 
   systemPrompt(): string {
@@ -1295,6 +1303,7 @@ export class Agent {
     const runId = shortId('run_');
     this.currentRunId = runId;
     const started = Date.now();
+    this.runStartedAt = started;
     // R2: what defines the checks (runner configs, scripts, existing tests) before the agent touches anything
     try {
       this.checkDefs = snapshotCheckDefinitions(this.workspace);
@@ -1309,7 +1318,7 @@ export class Agent {
     try {
       // fresh system prompt each run (git state, memory files, mode may have changed).
       // N10: when only the date/git lines changed, the previous prompt is kept byte-identical (prefix cache) and the update rides on the user message.
-      const stable = stabilizeSystemPrompt(this, this.messages[0]?.role === 'system' ? contentToText(this.messages[0].content) : undefined, this.systemPrompt(), promptCacheSettings(this.config).stableEnvironment);
+      const stable = stabilizeSystemPrompt(this.messages, this.systemPrompt(), promptCacheSettings(this.config).stableEnvironment);
       const sys = stable.system;
       if (this.messages[0]?.role === 'system') this.messages[0] = { role: 'system', content: sys };
       else this.messages.unshift({ role: 'system', content: sys });
@@ -1321,6 +1330,7 @@ export class Agent {
         return await this.finish(runId, stopReason, finalText, started);
       }
       let content: string | ContentPart[] = pre.context ? (typeof input === 'string' ? `${input}\n\n${attachmentBlock('hook_context', {}, pre.context)}` : [...input, { type: 'text', text: attachmentBlock('hook_context', {}, pre.context) }]) : input;
+      content = this.fitInput(content);
       content = await this.withRepoMap(content, promptText);
       if (stable.note) content = typeof content === 'string' ? `${content}\n\n${stable.note}` : [...content, { type: 'text', text: stable.note }];
       this.emit({ type: 'run_start', runId, prompt: promptText, model: this.llm.profile.model });
@@ -1482,13 +1492,83 @@ export class Agent {
     return await this.finish(runId, stopReason, finalText, started);
   }
 
-  /** D7: the first prompt of a session carries a ranked repo map (personalised to what the prompt mentions). */
-  private async withRepoMap(content: string | ContentPart[], promptText: string): Promise<string | ContentPart[]> {
-    const tokens = coreSettings(this.config).repoMapTokens;
-    if (this.depth !== 0 || tokens <= 0 || typeof content !== 'string' || this.messages.some((m) => m.role === 'user' || m.role === 'assistant')) return content;
+  /**
+   * A message too large for the model's context (a pasted log, a stack trace) is shortened to its first and last
+   * lines, with the full text saved under .tugline/pastes/ for the agent to grep or read. Sent whole, the server
+   * would reject it, and compaction cannot help: the oversized part is the new message itself.
+   */
+  private fitInput(content: string | ContentPart[]): string | ContentPart[] {
+    // a message may use up to half the model's context window (the rest is the system prompt, tools, history and the reply)
+    const limit = Math.max(1500, Math.floor(this.llm.profile.contextWindow * 0.5));
+    const fit = (text: string): string => fitShare(text, limit);
+    const fitShare = (text: string, max: number): string => {
+      const r = fitLargeInput(text, max, this.workspace);
+      if (r.saved) {
+        const ctx = this.llm.profile.contextWindow;
+        this.emit({ type: 'notice', level: 'warn', message: `Your message was about ${r.saved.tokens.toLocaleString('en-US')} tokens, too large for the model's ${ctx.toLocaleString('en-US')}-token context. The agent got the first and last lines (${r.saved.keptLines.toLocaleString('en-US')} of ${r.saved.lines.toLocaleString('en-US')}); the full text is in ${r.saved.rel}, which it can search.` });
+        this.journal?.write({ type: 'large_input', file: r.saved.rel, tokens: r.saved.tokens, lines: r.saved.lines, keptLines: r.saved.keptLines });
+      }
+      return r.text;
+    };
     try {
-      const recent = [...new Set(this.editHistory.map((e) => e.path))];
-      const m = await buildRepoMap(this.workspace, { tokens, focusText: promptText, focusFiles: recent, canRead: readableBy(this.policy), exclude: coreSettings(this.config).repoMapExclude, cacheDir: repoMapCacheDir(this.config)(this.workspace), maxFiles: coreSettings(this.config).repoMapMaxFiles });
+      if (typeof content === 'string') return fit(content);
+      // the text parts share one budget, in proportion to their size
+      const texts = content.filter((p) => p.type === 'text') as { type: 'text'; text: string }[];
+      const total = texts.reduce((n, p) => n + p.text.length, 0) || 1;
+      return content.map((p) => (p.type === 'text' ? { ...p, text: fitShare(p.text, Math.max(500, Math.floor((limit * p.text.length) / total))) } : p));
+    } catch (e) {
+      // saving the full text failed (read-only workspace): send it as it is, and say so
+      this.log('warn', `could not shorten a large message: ${(e as Error).message}`);
+      return content;
+    }
+  }
+
+  /** The repo map options for this agent (focus added per prompt). */
+  private repoMapOptions(focusText: string) {
+    const st = coreSettings(this.config);
+    const recent = [...new Set(this.editHistory.map((e) => e.path))];
+    return { tokens: st.repoMapTokens, focusText, focusFiles: recent, canRead: readableBy(this.policy), exclude: st.repoMapExclude, cacheDir: repoMapCacheDir(this.config)(this.workspace), maxFiles: st.repoMapMaxFiles };
+  }
+
+  /** A background build that warms the repo-map cache (prewarm, or a prompt that did not wait for it). */
+  private repoMapWarm?: Promise<unknown>;
+
+  /**
+   * Warm what the first prompt needs before the user sends it (the VS Code panel calls this when a chat opens): the
+   * repo map's per-file index, the slow part on a large repository. Never throws; errors only cost the warm-up.
+   */
+  prewarm(): Promise<unknown> {
+    if (this.depth !== 0 || coreSettings(this.config).repoMapTokens <= 0) return Promise.resolve();
+    this.repoMapWarm ??= buildRepoMap(this.workspace, this.repoMapOptions('')).catch((e) => this.log('warn', `repo map warm-up failed: ${(e as Error).message}`));
+    return this.repoMapWarm;
+  }
+
+  /**
+   * D7: the first prompt of a session carries a ranked repo map (personalised to what the prompt mentions). A prompt
+   * waits at most repoMapWaitMs for it (a cold build on a large repository took seconds before the first request);
+   * when it is not ready, the prompt goes without it and the map rides on the next prompt instead.
+   */
+  private async withRepoMap(content: string | ContentPart[], promptText: string): Promise<string | ContentPart[]> {
+    const st = coreSettings(this.config);
+    const tokens = st.repoMapTokens;
+    if (this.depth !== 0 || tokens <= 0 || typeof content !== 'string') return content;
+    // from the history: a cleared, truncated or edited conversation gets the map again; a deferred one on its next prompt
+    if (this.messages.some((m) => m.role === 'user' && contentToText(m.content).includes('<repo_map'))) return content;
+    if (this.messages.some((m) => m.role === 'user' || m.role === 'assistant') && !this.repoMapDeferred) return content;
+    try {
+      // a warm-up already running fills the cache: wait for it rather than scanning the repository twice
+      const build = (this.repoMapWarm ?? Promise.resolve()).then(() => buildRepoMap(this.workspace, this.repoMapOptions(promptText)));
+      const timedOut = Symbol('timeout');
+      let timer: NodeJS.Timeout | undefined;
+      const m = await Promise.race([build, new Promise<typeof timedOut>((r) => (timer = setTimeout(() => r(timedOut), st.repoMapWaitMs)))]).finally(() => clearTimeout(timer));
+      if (m === timedOut) {
+        // keep building in the background (it fills the cache), attach on the next prompt
+        this.repoMapDeferred = true;
+        this.repoMapWarm = build.catch(() => undefined);
+        this.log('info', `repo map not ready after ${st.repoMapWaitMs} ms; the prompt is sent without it`);
+        return content;
+      }
+      this.repoMapDeferred = false;
       if (!m.text) return content;
       return `${content}\n\n${attachmentBlock('repo_map', {}, `Ranked outline of this repository (${m.files.length} of ${m.totalFiles} source files; ⋮ = elided code). Use it to decide what to read; it is not the full code.\n${m.text}`)}`;
     } catch (e) {
@@ -1496,6 +1576,7 @@ export class Agent {
       return content;
     }
   }
+  private repoMapDeferred = false;
 
   private async finish(runId: string, stopReason: StopReason, finalText: string, started: number): Promise<RunResult> {
     this.stats.durationMs = Date.now() - started;
@@ -1593,6 +1674,7 @@ export class Agent {
     // D10: in plan mode the main loop uses the planner profile when one is routed.
     const planning = this.policy.mode === 'plan' && !!this.config.routing?.planner && this.depth === 0;
     const client = planning ? this.llmFor('planner') : this.llm;
+    if (this.stats.setupMs === undefined && this.runStartedAt) this.stats.setupMs = Date.now() - this.runStartedAt;
     const res = await client.complete({
       messages: this.messages,
       tools: this.toolSpecs(),
@@ -1603,6 +1685,9 @@ export class Agent {
       onReasoningDelta: (t) => this.emit({ type: 'reasoning_delta', text: t }),
     });
     this.stats.successfulLlmCalls++;
+    this.stats.firstTokenMs ??= res.ttftMs;
+    this.stats.modelMs = (this.stats.modelMs ?? 0) + res.latencyMs;
+    if (res.usage.cachedTokens !== undefined) this.stats.cachedTokens = (this.stats.cachedTokens ?? 0) + res.usage.cachedTokens;
     const cost = costOf(res.usage, client.profile);
     this.stats.promptTokens += res.usage.promptTokens;
     this.stats.completionTokens += res.usage.completionTokens;

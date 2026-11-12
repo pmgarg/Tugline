@@ -1126,3 +1126,12 @@ test('R14 (VS Code): re-creating the agent of a live chat carries the durable se
   await next.dispose();
   await srv.close();
 });
+
+test('settings view: a saved API key is sent only to its own server (browsing providers never sends it elsewhere)', async () => {
+  const { sameOrigin } = await import('../vscode/src/settingsConfig.js');
+  assert.equal(sameOrigin('https://ai.example.com/api', 'https://ai.example.com/api/v1'), true);
+  assert.equal(sameOrigin('https://openrouter.ai/api/v1', 'https://api.openai.com/v1'), false);
+  assert.equal(sameOrigin('http://localhost:11434/v1', 'http://localhost:1234/v1'), false, 'another port is another server');
+  assert.equal(sameOrigin('http://ai.example.com/v1', 'https://ai.example.com/v1'), false, 'and another scheme');
+  assert.equal(sameOrigin('not a url', 'https://x/v1'), false);
+});

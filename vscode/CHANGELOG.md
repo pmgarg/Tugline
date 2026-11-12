@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.4.0: first stable release
+- **Faster replies.**
+  - The system prompt and the tool list are now byte-identical in every chat. A model server that caches prompts (vLLM, llama.cpp, Ollama, SGLang) reuses them instead of reading about 5,000 tokens again for each new chat. The date and git status, which change, now ride on the message instead.
+  - A chat's agent is prepared, and the repository map built, as soon as the chat opens, so the first message no longer waits for them. Tugline's own time before the first request went from about 1.9 s to 0.2 s.
+  - A message never waits more than 3 seconds for the repository map; on a very large repository the map comes with the next message.
+  - Under each answer, a line shows where the time went: setup, the model's first reply, and prompt tokens the server reused from its cache.
+- **Everything in the panel.**
+  - A new Settings page in the panel sets the provider, base URL, API key, model (loaded from the server), context window, output limit and tool calling, with a connection test. Nothing opens the command palette anymore.
+  - Mode, model and reasoning effort are menus in the panel.
+  - Questions from slash commands appear in the chat, like the agent's own questions.
+- **A new look.** Rounded cards and pill chips, in-panel menus, code blocks with a copy button, switches, and a cleaner empty chat. It uses your theme's colours in light, dark and high-contrast themes.
+- **Large pastes.** A long log or stack trace pasted into the message box becomes one attachment, and shows collapsed in the chat. A message larger than the model's context is no longer rejected: the agent gets its first and last lines, and the full text is saved in `.tugline/pastes/` (never committed) for it to search.
+- **Fixes.**
+  - `tug audit export --since` dropped events in time zones away from UTC around midnight.
+  - The agent was told the UTC date, which is a day off around midnight away from UTC; it now gets your local date.
+
 ## 1.2.7 (pre-release): the connection test no longer reports an untested fallback as failing
 - When a model has native tool calls, the connection test showed "text tool calls ✗". The text protocol is only a fallback for models without native tool calls, and it was not tested in that case. It now shows "text tool calls not needed".
 

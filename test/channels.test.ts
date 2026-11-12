@@ -6,7 +6,7 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import crypto from 'node:crypto';
-import { startMockServer, testConfig, tmpWorkspace, type MockServer } from './helpers.js';
+import { startMockServer, testConfig, tmpWorkspace, type MockServer, withoutEnvironment } from './helpers.js';
 import { TelegramAdapter } from '../src/channels/telegram.js';
 import { SlackAdapter, slackSignature, verifySlack } from '../src/channels/slack.js';
 import { WebhookChannelAdapter } from '../src/channels/webhook.js';
@@ -301,7 +301,7 @@ test("H3: the owner's text is the prompt in the clear; owner runs are headless (
   await gw.handle(msg({ userId: '1', chatId: '1', text: `/pair ${code}` }));
   await gw.handle(msg({ userId: '1', chatId: '1', text: 'create a file x' }));
   const user = mock.requests[0].messages.find((m: any) => m.role === 'user').content;
-  assert.equal(user, 'create a file x');
+  assert.equal(withoutEnvironment(user), 'create a file x');
   const last = tg.calls.filter((c) => c.method === 'editMessageText').at(-1)!.body.text;
   assert.match(last, /1 action\(s\) needed approval and were denied: bash/);
 });

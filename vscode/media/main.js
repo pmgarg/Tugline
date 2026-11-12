@@ -8,11 +8,12 @@
     <header class="top">
       <div class="tabs" id="tabs" role="tablist" aria-label="Chats"></div>
       <div class="tools">
+        <button class="ib" id="newchat" title="New chat" aria-label="New chat">${ic('add')}</button>
         <nav class="views" aria-label="Views">
           <button class="ib on" data-view="chat" title="Chat" aria-label="Chat">${ic('comment-discussion')}</button>
           <button class="ib" data-view="checkpoints" title="Checkpoints: rewind files or the chat" aria-label="Checkpoints">${ic('history')}</button>
           <button class="ib" data-view="manage" title="MCP servers and skills" aria-label="MCP servers and skills">${ic('extensions')}</button>
-          <button class="ib" data-view="settings" title="Settings" aria-label="Settings">${ic('settings-gear')}</button>
+          <button class="ib" data-view="settings" title="Settings: model, API key and rules" aria-label="Settings">${ic('settings-gear')}</button>
         </nav>
         <button class="ib estop" id="estop" title="Emergency stop (Ctrl+Alt+Shift+Esc): stop every agent and all automation" aria-label="Emergency stop">${ic('debug-stop')}</button>
       </div>
@@ -24,40 +25,34 @@
         <div id="pending" class="pending hidden"></div>
       </div>
       <footer class="composer">
-        <div id="atts" class="atts hidden"></div>
         <div id="mention" class="mention hidden" role="listbox"></div>
         <div id="ctx" class="ctx hidden"></div>
         <div class="box">
-          <textarea id="input" rows="2" placeholder="Ask the agent… @ files, / commands" title="Enter to send, Shift+Enter for a new line, @ to mention files, / for commands and skills; paste or drop images" aria-label="Message the agent"></textarea>
+          <div id="atts" class="atts hidden"></div>
+          <textarea id="input" rows="2" placeholder="Ask anything, @ to add files, / for commands" title="Enter to send, Shift+Enter for a new line, @ to mention files, / for commands and skills; paste or drop images" aria-label="Message the agent"></textarea>
           <div class="bar">
             <div class="chips">
-            <span class="chipw"><select id="mode" class="chip" title="Permission mode. Ask first: ask before every edit and command. Accept edits: edit without asking, commands still ask. Plan: read-only until you approve a plan. Auto: a safety classifier approves routine steps. YOLO: no prompts and no classifier (deny rules, protected files and the sandbox still apply)." aria-label="Permission mode">
-              <option value="ask">Ask first</option>
-              <option value="acceptEdits">Accept edits</option>
-              <option value="plan">Plan</option>
-              <option value="auto">Auto</option>
-              <option value="yolo">YOLO</option>
-            </select></span>
-            <span class="chipw"><select id="model" class="chip" title="Model for this chat" aria-label="Model"></select></span>
-            <span class="chipw"><select id="effort" class="chip" title="Reasoning effort" aria-label="Reasoning effort">
-              <option value="default">Effort: auto</option><option value="off">Effort: off</option><option value="low">Effort: low</option><option value="medium">Effort: medium</option><option value="high">Effort: high</option>
-            </select></span>
+              <button class="chip" id="addctx" title="Add context: files, problems, terminal output, a URL (@)" aria-label="Add context">${ic('mention')}</button>
+              <button class="chip" id="modeBtn" data-menu="mode" aria-haspopup="menu" title="Permission mode: how much the agent may do without asking"><span class="mdot"></span><span class="lbl">Ask first</span>${ic('chevron-down')}</button>
+              <button class="chip" id="modelBtn" data-menu="model" aria-haspopup="menu" title="Model for this chat">${ic('sparkle')}<span class="lbl"></span>${ic('chevron-down')}</button>
+              <button class="chip" id="effortBtn" data-menu="effort" aria-haspopup="menu" title="Reasoning effort (for models that think)">${ic('lightbulb')}<span class="lbl">Auto</span>${ic('chevron-down')}</button>
             </div>
             <div class="acts">
-            <button id="mic" class="ib" title="Voice input (push to talk; needs tugline.voice.enabled and a local transcriber)" aria-label="Voice input">${ic('mic')}</button>
-            <button id="steer" class="ib hidden" title="Steer: send now; the agent reads it at its next step" aria-label="Steer">${ic('debug-step-into')}</button>
-            <button id="stop" class="ib hidden" title="Stop the agent" aria-label="Stop">${ic('debug-stop')}</button>
-            <button id="send" class="send" title="Send (Enter)" aria-label="Send">${ic('send')}</button>
+              <button id="mic" class="ib hidden" title="Voice input (push to talk; needs tugline.voice.enabled and a local transcriber)" aria-label="Voice input">${ic('mic')}</button>
+              <button id="steer" class="ib hidden" title="Steer: send now; the agent reads it at its next step" aria-label="Steer">${ic('debug-step-into')}</button>
+              <button id="stop" class="ib hidden" title="Stop the agent" aria-label="Stop">${ic('debug-stop')}</button>
+              <button id="send" class="send" title="Send (Enter)" aria-label="Send">${ic('arrow-up')}</button>
             </div>
           </div>
         </div>
         <div class="under">
-          <label class="chk" title="Attach the file open in the editor (and your selection) to the message"><input type="checkbox" id="incfile" checked> Current file</label>
+          <label class="toggle" title="Attach the file open in the editor (and your selection) to the message"><input type="checkbox" id="incfile" checked><span class="sw"></span>Current file</label>
           <span class="spacer"></span>
-          <div class="meter" id="meter" title="Context window"><svg viewBox="0 0 20 20" class="ring" aria-hidden="true"><circle cx="10" cy="10" r="8" class="track"></circle><circle cx="10" cy="10" r="8" class="fill" id="meterFill"></circle></svg><span id="meterLabel"></span></div>
           <span id="usage" class="usage"></span>
+          <div class="meter" id="meter" title="Context window"><svg viewBox="0 0 20 20" class="ring" aria-hidden="true"><circle cx="10" cy="10" r="8" class="track"></circle><circle cx="10" cy="10" r="8" class="fill" id="meterFill"></circle></svg><span id="meterLabel"></span></div>
         </div>
       </footer>
+      <div id="menu" class="menu hidden" role="menu"></div>
     </section>
     <section id="view-checkpoints" class="view hidden"><div class="pad"><div class="vhead"><h2>Checkpoints</h2><span class="spacer"></span><button class="ib" id="cpRefresh" title="Refresh" aria-label="Refresh">${ic('refresh')}</button></div><div class="row opts"><label class="chk"><input type="checkbox" id="cpMine" checked> This chat only</label><label class="chk"><input type="checkbox" id="cpAll"> Show turns without file changes</label></div><div id="cpList" class="list"></div></div></section>
     <section id="view-manage" class="view hidden"><div class="pad" id="manage"></div></section>
@@ -73,6 +68,7 @@
   let chats = [];
   const per = new Map(); // chatId → {el, streamEl, streamText, reasoningEl, toolEls, running, todos}
   let images = [];
+  let pastes = []; // big pasted text (a log, a stack trace): a chip in the composer, sent with the message
   let cpData = null;
 
   function chatState(id) {
@@ -96,11 +92,11 @@
       ['book', 'Explain the current file', 'Explain what the current file does, how it fits into the project, and anything risky in it.'],
       ['list-ordered', 'Plan a change first', 'Make a plan for this change before editing anything: '],
     ];
-    return `<div class="empty"><h2>What should we work on?</h2>
-      <p class="lede">The agent reads your code, edits files, runs commands in a sandbox and checks its work with your project's tests.</p>
+    return `<div class="empty"><div class="logo">${ic('sparkle')}</div><h2>What should we work on?</h2>
+      <p class="lede">Tugline reads your code, edits files, runs commands in a sandbox and checks its work with your project's tests, on the model you choose.</p>
       <div class="starters">${starters.map(([i, t, prompt]) => `<button class="starter" data-prompt="${esc(prompt)}">${ic(i)}<span>${esc(t)}</span></button>`).join('')}</div>
       <p class="hint">Type <kbd>@</kbd> to add files, problems or terminal output, and <kbd>/</kbd> for commands. Select code and press <kbd>Ctrl+Alt+K</kbd> to edit it inline.</p>
-      <p class="hint"><a href="#" data-act="cfg">Configure endpoint</a> <span class="sep"></span> <a href="#" data-act="test">Test connection</a></p></div>`;
+      <p class="hint"><a href="#" data-act="cfg">Model and API key</a><span class="sep"></span><a href="#" data-act="test">Test connection</a></p></div>`;
   }
 
   let saveTimer;
@@ -123,7 +119,7 @@
         const nl = p.indexOf('\n');
         const lang = nl > 0 ? p.slice(0, nl).trim() : '';
         const code = nl > 0 ? p.slice(nl + 1) : p;
-        html += `<pre class="code"><div class="lang">${esc(lang)}</div><code>${esc(code.replace(/\n$/, ''))}</code></pre>`;
+        html += `<pre class="code"><div class="cbar"><span class="lang">${esc(lang)}</span><button class="ib copy" data-copy title="Copy" aria-label="Copy code">${ic('copy')}</button></div><code>${esc(code.replace(/\n$/, ''))}</code></pre>`;
       } else {
         const codes = [];
         let t = String(p).replace(/`([^`\n]+)`/g, (m, c) => {
@@ -211,6 +207,10 @@
     if (v === 'settings') vscode.postMessage({ type: 'settings', action: 'load' });
   }
   document.querySelectorAll('nav.views button[data-view]').forEach((b) => (b.onclick = () => showView(b.dataset.view)));
+  function openModelSettings() {
+    state.focusModel = true;
+    showView('settings');
+  }
 
   // ------------------------------------------------------------ composer
 
@@ -225,10 +225,11 @@
 
   let uidSeq = 0;
   function send() {
-    const text = input.value.trim();
-    if (!text && !images.length) return;
+    const typed = input.value.trim();
+    if (!typed && !images.length && !pastes.length) return;
+    const text = [typed, ...pastes.map((p) => p.text)].filter(Boolean).join('\n\n');
     const uid = 'w' + Date.now().toString(36) + (uidSeq++).toString(36);
-    const d = add(active, 'user', userHtml(text, images));
+    const d = add(active, 'user', userHtml(typed, images, pastes));
     d.dataset.uid = uid;
     d.dataset.text = text;
     input.value = '';
@@ -236,14 +237,26 @@
     closeMention();
     const imgs = images;
     images = [];
+    pastes = [];
     renderAtts();
     endStream(cur());
     vscode.postMessage({ type: 'send', chatId: active, text, includeFile: $('incfile').checked, images: imgs, uid });
   }
 
-  function userHtml(text, imgs) {
+  const LONG_LINES = 25;
+  const LONG_CHARS = 1500;
+  const isLong = (t) => t.length > LONG_CHARS || t.split('\n').length > LONG_LINES;
+  const lineCount = (t) => t.split('\n').length;
+  /** A long text in the transcript: the first lines, and a button that shows the rest. */
+  function longBlock(t, label) {
+    const n = lineCount(t);
+    return `<div class="longtext"><div class="lthead">${ic('note')}<span>${esc(label || 'Message')} · ${n.toLocaleString()} line${n === 1 ? '' : 's'}</span></div><pre class="lt">${esc(t.length > 200000 ? t.slice(0, 100000) + '\n…\n' + t.slice(-50000) : t)}</pre><button class="linkbtn more" data-more>Show all</button></div>`;
+  }
+  function userHtml(text, imgs, pasted) {
     const thumbs = (imgs || []).map((i) => `<img class="thumb" src="${esc(i.dataUrl)}" alt="${esc(i.name)}">`).join('');
-    return `<div class="utext">${md(text)}</div>${thumbs ? `<div class="thumbs">${thumbs}</div>` : ''}<span class="edit hidden" title="Edit and resubmit" role="button" aria-label="Edit and resubmit">${ic('edit')}</span>`;
+    const body = text ? (isLong(text) ? longBlock(text) : `<div class="utext">${md(text)}</div>`) : '';
+    const blocks = (pasted || []).map((p) => longBlock(p.text, 'Pasted text')).join('');
+    return `${body}${blocks}${thumbs ? `<div class="thumbs">${thumbs}</div>` : ''}<span class="edit hidden" title="Edit and resubmit" role="button" aria-label="Edit and resubmit">${ic('edit')}</span>`;
   }
 
   $('send').onclick = send;
@@ -255,15 +268,160 @@
     input.value = '';
     vscode.postMessage({ type: 'steer', chatId: active, text });
   };
-  $('mode').value = state.mode;
-  app.dataset.mode = state.mode;
-  $('mode').onchange = () => {
-    state.mode = $('mode').value;
-    app.dataset.mode = state.mode;
-    vscode.postMessage({ type: 'setMode', chatId: active, mode: $('mode').value });
+  // ------------------------------------------------------------ composer menus (mode, model, effort)
+  // In-panel menus, not native selects: they look like the rest of the panel and never leave it.
+  const MODES = [
+    { value: 'ask', label: 'Ask first', icon: 'shield', desc: 'Approve every edit and command' },
+    { value: 'acceptEdits', label: 'Accept edits', icon: 'edit', desc: 'Edits apply without asking; commands still ask' },
+    { value: 'plan', label: 'Plan', icon: 'list-ordered', desc: 'Read-only until you approve a plan' },
+    { value: 'auto', label: 'Auto', icon: 'wand', desc: 'A safety classifier approves routine steps' },
+    { value: 'yolo', label: 'YOLO', icon: 'warning', desc: 'No prompts (deny rules, protected files and the sandbox still apply)' },
+  ];
+  const EFFORTS = [
+    { value: 'default', label: 'Auto', desc: "The model's default" },
+    { value: 'off', label: 'Off', desc: 'No thinking: fastest' },
+    { value: 'low', label: 'Low', desc: 'A little thinking' },
+    { value: 'medium', label: 'Medium', desc: 'More thinking' },
+    { value: 'high', label: 'High', desc: 'Most thinking: slowest' },
+  ];
+  const shortModel = (id) => String(id || '').split('/').pop();
+  const picker = { model: '', baseUrl: '', choice: '', items: [], effort: 'default' };
+  function setModeLabel(m) {
+    const mo = MODES.find((x) => x.value === m) || MODES[0];
+    $('modeBtn').querySelector('.lbl').textContent = mo.label;
+    app.dataset.mode = mo.value;
+  }
+  function setModelLabel() {
+    const cur = picker.items.find((i) => i.value === picker.choice);
+    $('modelBtn').querySelector('.lbl').textContent = cur ? cur.label : shortModel(picker.model) || 'Choose a model';
+    $('modelBtn').title = `Model for this chat: ${picker.model || 'none'}${picker.baseUrl ? ` @ ${picker.baseUrl}` : ''}`;
+  }
+  function setEffortLabel() {
+    const e = EFFORTS.find((x) => x.value === picker.effort) || EFFORTS[0];
+    // only an icon until an effort is chosen (keeps the chips on one row in a narrow sidebar)
+    $('effortBtn').querySelector('.lbl').textContent = e.value === 'default' ? '' : e.label;
+    $('effortBtn').classList.toggle('set', e.value !== 'default');
+    $('effortBtn').title = `Reasoning effort: ${e.label} (for models that think)`;
+  }
+  setModeLabel(state.mode);
+  setEffortLabel();
+
+  const menu = { el: $('menu'), kind: '', anchor: null, sel: 0, items: [], filter: '' };
+  function menuItems(kind) {
+    if (kind === 'mode') return MODES.map((m) => ({ ...m, on: m.value === state.mode }));
+    if (kind === 'effort') return EFFORTS.map((e) => ({ ...e, on: e.value === picker.effort }));
+    const f = menu.filter.toLowerCase();
+    const base = [{ value: '', label: shortModel(picker.model) || 'Default model', desc: `${picker.model || ''} (from settings)`, group: 'Default', on: !picker.choice }];
+    const rest = picker.items.map((i) => ({ value: i.value, label: i.label, desc: i.detail || '', group: i.group === 'profiles' ? 'Profiles' : 'Models on the endpoint', on: i.value === picker.choice }));
+    return [...base, ...rest].filter((i) => !f || i.label.toLowerCase().includes(f) || String(i.value).toLowerCase().includes(f));
+  }
+  function renderMenu() {
+    const kind = menu.kind;
+    menu.items = menuItems(kind);
+    let group = '';
+    const rows = menu.items.map((it, i) => {
+      const g = it.group && it.group !== group ? `<div class="mg">${esc((group = it.group))}</div>` : '';
+      return `${g}<div class="mi ${i === menu.sel ? 'cur' : ''} ${it.on ? 'on' : ''}" role="menuitemradio" aria-checked="${!!it.on}" data-i="${i}" data-value="${esc(it.value)}">${it.icon ? ic(it.icon) : ''}<span class="mt"><span class="ml">${esc(it.label)}</span>${it.desc ? `<span class="md">${esc(it.desc)}</span>` : ''}</span>${it.on ? ic('check') : ''}</div>`;
+    });
+    const search = kind === 'model' ? `<div class="msearch">${ic('search')}<input id="menuFilter" placeholder="Filter models" value="${esc(menu.filter)}" aria-label="Filter models"></div>` : '';
+    const foot = kind === 'model' ? `<div class="mfoot"><a href="#" data-act="settings">${ic('settings-gear')}Manage models and endpoint…</a></div>` : '';
+    menu.el.innerHTML = `${search}<div class="mlist">${rows.join('') || '<div class="hint mempty">No model matches.</div>'}</div>${foot}`;
+    const fi = $('menuFilter');
+    if (fi) {
+      fi.oninput = () => { menu.filter = fi.value; menu.sel = 0; renderMenu(); };
+      fi.onkeydown = menuKey;
+      fi.focus();
+      fi.setSelectionRange(fi.value.length, fi.value.length);
+    }
+  }
+  function openMenu(kind, anchor) {
+    if (menu.kind === kind && !menu.el.classList.contains('hidden')) return closeMenu();
+    menu.kind = kind;
+    menu.anchor = anchor;
+    menu.filter = '';
+    menu.items = menuItems(kind);
+    menu.sel = Math.max(0, menu.items.findIndex((i) => i.on));
+    renderMenu();
+    menu.el.classList.remove('hidden');
+    anchor.setAttribute('aria-expanded', 'true');
+    // above the composer, aligned with the chip (clamped to the panel)
+    const r = anchor.getBoundingClientRect();
+    const w = Math.min(300, window.innerWidth - 16);
+    menu.el.style.width = `${w}px`;
+    menu.el.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - w - 8))}px`;
+    menu.el.style.bottom = `${window.innerHeight - r.top + 6}px`;
+    if (kind !== 'model') menu.el.focus();
+  }
+  function closeMenu() {
+    menu.el.classList.add('hidden');
+    menu.anchor?.setAttribute('aria-expanded', 'false');
+    menu.kind = '';
+  }
+  function chooseMenu(i) {
+    const it = menu.items[i];
+    if (!it) return;
+    const kind = menu.kind;
+    closeMenu();
+    if (kind === 'mode') {
+      state.mode = it.value;
+      setModeLabel(it.value);
+      save();
+      vscode.postMessage({ type: 'setMode', chatId: active, mode: it.value });
+    } else if (kind === 'effort') {
+      picker.effort = it.value;
+      setEffortLabel();
+      vscode.postMessage({ type: 'setEffort', chatId: active, effort: it.value });
+    } else {
+      picker.choice = it.value;
+      setModelLabel();
+      vscode.postMessage({ type: 'setModel', chatId: active, value: it.value });
+    }
+    input.focus();
+  }
+  function menuKey(e) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      menu.sel = (menu.sel + (e.key === 'ArrowDown' ? 1 : -1) + menu.items.length) % Math.max(1, menu.items.length);
+      renderMenu();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      chooseMenu(menu.sel);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      closeMenu();
+      input.focus();
+    }
+  }
+  menu.el.tabIndex = -1;
+  menu.el.addEventListener('keydown', (e) => e.target === menu.el && menuKey(e));
+  menu.el.addEventListener('mousedown', (e) => {
+    const mi = e.target.closest('.mi');
+    if (mi) {
+      e.preventDefault();
+      chooseMenu(Number(mi.dataset.i));
+    }
+    const a = e.target.closest('[data-act="settings"]');
+    if (a) {
+      e.preventDefault();
+      closeMenu();
+      showView('settings');
+    }
+  });
+  document.querySelectorAll('.chip[data-menu]').forEach((b) => (b.onclick = (e) => { e.stopPropagation(); openMenu(b.dataset.menu, b); }));
+  document.addEventListener('mousedown', (e) => {
+    if (!menu.el.classList.contains('hidden') && !menu.el.contains(e.target) && !e.target.closest('.chip[data-menu]')) closeMenu();
+  });
+  window.addEventListener('resize', closeMenu);
+  $('addctx').onclick = () => {
+    const at = input.selectionStart ?? input.value.length;
+    const before = input.value.slice(0, at);
+    const ins = (before && !/\s$/.test(before) ? ' ' : '') + '@';
+    input.value = before + ins + input.value.slice(at);
+    input.focus();
+    input.setSelectionRange(at + ins.length, at + ins.length);
+    input.dispatchEvent(new Event('input'));
   };
-  $('model').onchange = () => vscode.postMessage({ type: 'setModel', chatId: active, value: $('model').value });
-  $('effort').onchange = () => vscode.postMessage({ type: 'setEffort', chatId: active, effort: $('effort').value });
+  $('newchat').onclick = () => vscode.postMessage({ type: 'newChat' });
 
   input.addEventListener('keydown', (e) => {
     if (mention.open) {
@@ -299,21 +457,6 @@
     const m = /(^|\s)@([^\s@]*)$/.exec(before);
     return m ? { q: m[2], start: before.length - m[2].length - 1, kind: 'mention' } : undefined;
   }
-  // pickers are as wide as their current choice (a native select is as wide as its longest option)
-  const shortModel = (id) => String(id || '').split('/').pop();
-  const measure = document.createElement('canvas').getContext('2d');
-  function fitChip(sel) {
-    const o = sel.options[sel.selectedIndex];
-    if (!o) return;
-    const cs = getComputedStyle(sel);
-    measure.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-    sel.style.width = `${Math.ceil(measure.measureText(o.text).width) + 28}px`;
-  }
-  const fitChips = () => ['mode', 'model', 'effort'].forEach((id) => fitChip($(id)));
-  ['mode', 'model', 'effort'].forEach((id) => $(id).addEventListener('change', () => fitChip($(id))));
-  window.addEventListener('load', fitChips);
-  document.fonts?.ready?.then(fitChips);
-
   // the composer grows with its text (up to 40% of the panel, then it scrolls)
   const autosize = () => {
     input.style.height = 'auto';
@@ -367,14 +510,30 @@
   }
   function renderAtts() {
     const el = $('atts');
-    el.classList.toggle('hidden', !images.length);
-    el.innerHTML = images.map((i, k) => `<span class="att"><img src="${esc(i.dataUrl)}" alt=""><span>${esc(i.name)}</span><span class="x" data-k="${k}">×</span></span>`).join('');
+    el.classList.toggle('hidden', !images.length && !pastes.length);
+    el.innerHTML =
+      pastes.map((p, k) => `<span class="att paste" title="Click to edit it in the message box">${ic('clippy')}<span class="an" data-pe="${k}">Pasted text · ${lineCount(p.text).toLocaleString()} line${lineCount(p.text) === 1 ? '' : 's'}</span><span class="x" data-pk="${k}" title="Remove" aria-label="Remove">${ic('close')}</span></span>`).join('') +
+      images.map((i, k) => `<span class="att"><img src="${esc(i.dataUrl)}" alt=""><span class="an">${esc(i.name)}</span><span class="x" data-k="${k}" title="Remove" aria-label="Remove">${ic('close')}</span></span>`).join('');
   }
   $('atts').addEventListener('click', (e) => {
-    const x = e.target.closest('.x');
-    if (x) {
-      images.splice(Number(x.dataset.k), 1);
+    const xi = e.target.closest('[data-k]');
+    if (xi) {
+      images.splice(Number(xi.dataset.k), 1);
+      return renderAtts();
+    }
+    const xp = e.target.closest('[data-pk]');
+    if (xp) {
+      pastes.splice(Number(xp.dataset.pk), 1);
+      return renderAtts();
+    }
+    const pe = e.target.closest('[data-pe]');
+    if (pe) {
+      // back into the message box, to edit it
+      const [p] = pastes.splice(Number(pe.dataset.pe), 1);
+      input.value = input.value ? `${input.value}\n\n${p.text}` : p.text;
       renderAtts();
+      autosize();
+      input.focus();
     }
   });
   input.addEventListener('paste', (e) => {
@@ -382,7 +541,15 @@
       if (it.kind === 'file' && it.type.startsWith('image/')) {
         e.preventDefault();
         addImageFile(it.getAsFile());
+        return;
       }
+    }
+    // a big paste (a log, a stack trace) becomes a chip instead of filling the box
+    const t = e.clipboardData?.getData('text/plain') || '';
+    if (isLong(t)) {
+      e.preventDefault();
+      pastes.push({ text: t.replace(/\r\n/g, '\n') });
+      renderAtts();
     }
   });
   app.addEventListener('dragover', (e) => e.preventDefault());
@@ -396,7 +563,7 @@
   // Log clicks: open files, expand tools, edit-and-resubmit (B7).
   $('logs').addEventListener('click', (e) => {
     const t = e.target;
-    if (t.closest('[data-act="cfg"]')) return (e.preventDefault(), vscode.postMessage({ type: 'configure' }));
+    if (t.closest('[data-act="cfg"]')) return (e.preventDefault(), openModelSettings());
     if (t.closest('[data-act="test"]')) return (e.preventDefault(), vscode.postMessage({ type: 'testConnection' }));
     if (t.matches('code.inline') && /[./]/.test(t.dataset.path || '')) vscode.postMessage({ type: 'openFile', path: t.dataset.path.replace(/:\d+.*$/, '') });
     const th = t.closest('.tool .head');
@@ -408,6 +575,18 @@
       input.setSelectionRange(input.value.length, input.value.length);
     }
     if (t.closest('.msg.user .edit')) startEdit(t.closest('.msg.user'));
+    const more = t.closest('[data-more]');
+    if (more) {
+      const lt = more.closest('.longtext');
+      lt.classList.toggle('open');
+      more.textContent = lt.classList.contains('open') ? 'Show less' : 'Show all';
+    }
+    const cp = t.closest('[data-copy]');
+    if (cp) {
+      vscode.postMessage({ type: 'copy', text: cp.closest('pre.code').querySelector('code').textContent });
+      cp.innerHTML = ic('check');
+      setTimeout(() => (cp.innerHTML = ic('copy')), 1200);
+    }
   });
 
   $('logs').addEventListener('keydown', (e) => {
@@ -470,9 +649,16 @@
 
   function runStats(st) {
     const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
-    const secs = st.durationMs / 1000;
-    const time = secs >= 60 ? `${Math.floor(secs / 60)} min ${Math.round(secs % 60)} s` : `${secs.toFixed(1)} s`;
-    return `${n(st.toolCalls, 'tool call', 'tool calls')}, ${n(st.filesChanged.length, 'file changed', 'files changed')}, ${time}${st.costUsd ? `, $${st.costUsd.toFixed(st.costUsd < 0.01 ? 4 : 2)}` : ''}`;
+    const sec = (ms) => (ms >= 60000 ? `${Math.floor(ms / 60000)} min ${Math.round((ms % 60000) / 1000)} s` : `${(ms / 1000).toFixed(1)} s`);
+    const k = (t) => (t >= 1000 ? `${(t / 1000).toFixed(1)}k` : String(t));
+    let line = `${n(st.toolCalls, 'tool call', 'tool calls')}, ${n(st.filesChanged.length, 'file changed', 'files changed')}, ${sec(st.durationMs)}${st.costUsd ? `, $${st.costUsd.toFixed(st.costUsd < 0.01 ? 4 : 2)}` : ''}`;
+    // where the time went: setup on our side, then the model (its first reply is mostly prompt processing)
+    const parts = [];
+    if (st.setupMs >= 1000) parts.push(`setup ${sec(st.setupMs)}`);
+    if (st.firstTokenMs !== undefined) parts.push(`first reply after ${sec(st.firstTokenMs)}`);
+    if (st.promptTokens) parts.push(`${k(st.promptTokens)} prompt tokens${st.cachedTokens !== undefined ? (st.cachedTokens ? `, ${k(st.cachedTokens)} cached` : ', none cached') : ''}`);
+    if (parts.length) line += ` <span class="tm" title="Setup: Tugline's work before the first model request. First reply: how long the model server took to start answering (mostly reading the prompt; a server that caches prompts answers faster from the second message on). Cached: prompt tokens the server reused from its cache.">· ${esc(parts.join(' · '))}</span>`;
+    return line;
   }
 
   function permissionCard(msg) {
@@ -540,7 +726,7 @@
     if (!b) return;
     const card = b.closest('.msg.onboard');
     const action = b.dataset.ob;
-    if (action === 'configure') vscode.postMessage({ type: 'configure' });
+    if (action === 'configure') openModelSettings();
     else vscode.postMessage({ type: 'onboard', action, baseUrl: b.dataset.url, model: b.dataset.model });
     if (action === 'pickModel' || action === 'useServer') {
       card.querySelectorAll('button').forEach((x) => (x.disabled = true));
@@ -656,35 +842,187 @@
 
   let settingsScope = 'user';
   let settingsData = null;
+  // the model card's working state survives re-renders (a settings reload must not wipe what the user typed)
+  const ep = { baseUrl: '', apiKey: '', model: '', ctx: '', maxOut: '', toolMode: 'auto', models: [], modelsFor: '', modelsNote: '', loading: false, result: null, busy: false, dirty: false, req: 0 };
+  const PRESETS = [
+    { id: 'ollama', label: 'Ollama (this computer)', url: 'http://localhost:11434/v1', key: false },
+    { id: 'lmstudio', label: 'LM Studio (this computer)', url: 'http://localhost:1234/v1', key: false },
+    { id: 'llamacpp', label: 'llama.cpp server (this computer)', url: 'http://localhost:8080/v1', key: false },
+    { id: 'company', label: "Company server (vLLM, SGLang, Open WebUI, a gateway)", url: '', key: true },
+    { id: 'openai', label: 'OpenAI', url: 'https://api.openai.com/v1', key: true },
+    { id: 'openrouter', label: 'OpenRouter', url: 'https://openrouter.ai/api/v1', key: true },
+    { id: 'deepseek', label: 'DeepSeek', url: 'https://api.deepseek.com/v1', key: true },
+  ];
+  const presetOf = (url) => PRESETS.find((p) => p.url && p.url === url)?.id || 'company';
+
+  function loadModels(force) {
+    const url = ep.baseUrl.trim();
+    if (!/^https?:\/\/\S+$/.test(url)) return;
+    if (!force && ep.modelsFor === url + '|' + ep.apiKey) return;
+    ep.modelsFor = url + '|' + ep.apiKey;
+    ep.loading = true;
+    ep.req++;
+    vscode.postMessage({ type: 'settings', action: 'endpointModels', reqId: ep.req, baseUrl: url, apiKey: ep.apiKey || undefined });
+    renderModelList();
+  }
+  function renderModelList() {
+    const el = $('epModels');
+    if (!el) return;
+    if (ep.loading) return (el.innerHTML = `<div class="hint">${ic('loading')} Loading models…</div>`);
+    // filter only while the user types in the model box; a saved model name does not hide the list
+    const f = ep.typing ? ep.model.trim().toLowerCase() : '';
+    const list = ep.models.filter((m) => !f || m.id.toLowerCase().includes(f) || m.id === ep.model);
+    const sug = ep.suggest ? `<div class="obl"><button class="secondary" data-ep="useSuggest" title="${esc(ep.suggest)}">${ic('arrow-right')}Use ${esc(ep.suggest)}</button></div>` : '';
+    el.innerHTML = (ep.modelsNote ? `<div class="${ep.modelsErr ? 'err' : 'hint'}">${esc(ep.modelsNote)}</div>${sug}` : '') +
+      (list.length ? `<div class="mlist pick">${list.slice(0, 200).map((m) => `<div class="mi ${m.id === ep.model ? 'on' : ''}" data-model="${esc(m.id)}"><span class="mt"><span class="ml">${esc(m.id)}</span></span>${(m.tags || []).map((t) => `<span class="badge">${esc(t)}</span>`).join('')}${m.id === ep.model ? ic('check') : ''}</div>`).join('')}</div>` : '');
+  }
+  function epResultHtml() {
+    const r = ep.result;
+    if (!r) return '';
+    if (r.busy) return `<div class="epres busy">${ic('loading')}<span>${esc(r.text)}</span></div>`;
+    if (!r.ok) return `<div class="epres bad">${ic('error')}<span>${esc(r.error || 'The connection failed.')}</span></div>`;
+    const rep = r.report || {};
+    const yn = (ok, t) => `<span class="${ok ? 'add' : 'rem'}">${ic(ok ? 'check' : 'close')}${t}</span>`;
+    const tools = rep.nativeTools ? yn(true, 'native tool calls') : rep.textTools ? yn(true, 'text tool protocol') : yn(false, 'tool calls');
+    const speed = rep.latencyMs ? `${(rep.latencyMs / 1000).toFixed(1)} s for a short reply${rep.tokensPerSecond ? ` · ~${rep.tokensPerSecond} tok/s` : ''}` : '';
+    return `<div class="epres ok">${ic('pass-filled')}<span><b>Connected to ${esc(r.model || '')}</b><br>${yn(rep.chatOk, 'chat')} ${tools}${speed ? `<br><span class="hint">${esc(speed)}</span>` : ''}${(rep.errors || []).length ? `<br><span class="hint">${esc(rep.errors.join(' | '))}</span>` : ''}</span></div>`;
+  }
   function renderSettings() {
     const s = settingsData;
     const el = $('settings');
     if (!s) return;
+    const e = s.endpoint || {};
+    if (!ep.dirty) {
+      ep.baseUrl = e.baseUrl || '';
+      ep.model = e.model || '';
+      ep.ctx = e.contextWindow ? String(e.contextWindow) : '';
+      ep.maxOut = e.maxOutputTokens ? String(e.maxOutputTokens) : '';
+      ep.toolMode = e.toolMode || 'auto';
+    }
+    const locked = e.locked || {};
+    const pr = s.prefs || {};
     const sc = s[settingsScope];
     const d = sc.data || {};
     const perms = d.permissions || {};
     const hooks = d.hooks || {};
-    el.innerHTML = `<div class="row"><b>Settings</b><span class="spacer"></span><select id="scope"><option value="user">User (~/.tugline)</option><option value="project" ${s.hasWorkspace ? '' : 'disabled'}>Project (.tugline)</option></select></div>
-      ${settingsScope === 'project' ? `<p class="caveat">${s.trusted ? 'This workspace is trusted: its project config applies in full.' : '⚠ This workspace is not trusted. From project config only deny rules, protected paths and disabled skills take effect; allow rules, modes, hooks and MCP servers are ignored until you trust it.'}</p>` : ''}
+    const preset = presetOf(ep.baseUrl);
+    el.innerHTML = `<div class="settings">
+      <section class="card sec" id="sec-model">
+        <div class="sech">${ic('sparkle')}<h3>Model</h3></div>
+        <p class="hint">Tugline works with any OpenAI-compatible endpoint: a model on this computer, your company's server, or a hosted API.</p>
+        ${locked.baseUrl || locked.model ? `<p class="caveat">${ic('lock')} Your organisation manages the endpoint${locked.model ? ` (${esc(locked.model)})` : ''}. It cannot be changed here.</p>` : ''}
+        <div class="field"><label for="epPreset">Provider</label><select id="epPreset" ${locked.baseUrl ? 'disabled' : ''}>${PRESETS.map((p) => `<option value="${p.id}" ${p.id === preset ? 'selected' : ''}>${esc(p.label)}</option>`).join('')}</select></div>
+        <div class="field"><label for="epUrl">Base URL</label><input id="epUrl" spellcheck="false" placeholder="https://ai.example.com/v1" value="${esc(ep.baseUrl)}" ${locked.baseUrl ? 'disabled' : ''}><span class="hint">The API address, usually ending in <code>/v1</code> (Open WebUI: <code>/api</code>), not the chat website's address.</span></div>
+        <div class="field"><label for="epKey">API key</label><div class="pw"><input id="epKey" type="password" spellcheck="false" autocomplete="off" placeholder="${e.hasKey ? '•••••••• saved — type to replace' : 'Leave empty if your endpoint needs none'}" value="${esc(ep.apiKey)}"><button class="ib" id="epKeyShow" title="Show or hide the key" aria-label="Show or hide the key">${ic('eye')}</button></div><span class="hint">Kept in VS Code's secret storage, never in settings files.${e.hasKey ? ' <a href="#" data-ep="clearKey">Remove the saved key</a>' : ''}</span></div>
+        <div class="field"><label for="epModel">Model</label><div class="row tight"><input id="epModel" spellcheck="false" placeholder="Type or pick from the list" value="${esc(ep.model)}" ${locked.model ? 'disabled' : ''}><button class="secondary" id="epLoad" title="Ask the endpoint which models it serves">${ic('refresh')}Load</button></div><div id="epModels"></div></div>
+        <details class="more" ${ep.moreOpen ? 'open' : ''}><summary>Advanced: context window, output limit, tool calling</summary>
+          <div class="grid2">
+            <div class="field"><label for="epCtx">Context window (tokens)</label><input id="epCtx" type="number" min="0" step="1024" placeholder="auto" value="${esc(ep.ctx)}"></div>
+            <div class="field"><label for="epMax">Max output tokens</label><input id="epMax" type="number" min="0" step="256" value="${esc(ep.maxOut)}"></div>
+          </div>
+          <div class="field"><label>Tool calling</label><div class="seg" id="epTool">${[['auto', 'Auto'], ['native', 'Native'], ['text', 'Text protocol']].map(([v, l]) => `<button class="${ep.toolMode === v ? 'on' : ''}" data-v="${v}">${l}</button>`).join('')}</div><span class="hint">Auto uses the model's native tool calls and falls back to a text protocol when the server rejects them.</span></div>
+        </details>
+        <div class="row acts"><button id="epSave" ${ep.busy ? 'disabled' : ''}>${ic('check')}Save and test</button><button class="secondary" id="epTest" ${ep.busy ? 'disabled' : ''}>Test connection</button></div>
+        <div id="epResult">${epResultHtml()}</div>
+      </section>
+      <section class="card sec">
+        <div class="sech">${ic('settings')}<h3>Behaviour</h3></div>
+        <div class="field"><label for="pfMode">Default permission mode for new chats</label><select id="pfMode">${MODES.map((m) => `<option value="${m.value}" ${pr.permissionMode === m.value ? 'selected' : ''}>${esc(m.label)}: ${esc(m.desc)}</option>`).join('')}</select></div>
+        <label class="toggle"><input type="checkbox" id="pfNotify" ${pr.notifications !== false ? 'checked' : ''}><span class="sw"></span>Notify me when a long task finishes</label>
+        <label class="toggle"><input type="checkbox" id="pfTerminal" ${pr.visibleTerminal ? 'checked' : ''}><span class="sw"></span>Run commands in a visible terminal</label>
+      </section>
+      <details class="card sec" ${state.rulesOpen ? 'open' : ''} id="secRules"><summary class="sech">${ic('shield')}<h3>Rules and safety</h3><span class="hint">protected files, allow and deny rules, hooks</span></summary>
+      <div class="row"><span class="hint">Applies to</span><select id="scope"><option value="user">You (~/.tugline)</option><option value="project" ${s.hasWorkspace ? '' : 'disabled'}>This project (.tugline)</option></select></div>
+      ${settingsScope === 'project' ? `<p class="caveat">${s.trusted ? 'This workspace is trusted: its project config applies in full.' : 'This workspace is not trusted. From project config only deny rules, protected paths and disabled skills take effect; allow rules, modes, hooks and MCP servers are ignored until you trust it.'}</p>` : ''}
       <p class="hint mono">${esc(sc.file || sc.error || '')}</p>
-      <label>Default permission mode <select id="pmode"><option value="">(unchanged)</option>${['ask', 'acceptEdits', 'plan', 'auto', 'yolo'].map((m) => `<option ${d.permissionMode === m ? 'selected' : ''}>${m}</option>`).join('')}</select></label>
-      <label>Protected paths (one glob per line; the agent may never write these)<textarea id="pp" rows="4">${esc((perms.protectedPaths || []).join('\n'))}</textarea></label>
-      <div class="row"><button id="savepp">Save protected paths</button></div>
-      <label>Allow rules (e.g. <code>bash(npm test)</code>, <code>edit(src/**)</code>)<textarea id="allow" rows="3">${esc((perms.allow || []).join('\n'))}</textarea></label>
-      <label>Deny rules<textarea id="deny" rows="3">${esc((perms.deny || []).join('\n'))}</textarea></label>
-      <div class="row"><button id="saverules">Save rules</button></div>
-      <label>Hooks <select id="hookev">${['PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop', 'SessionStart', 'SessionEnd', 'PreCompact', 'SubagentStart', 'SubagentStop', 'PermissionRequest', 'Notification'].map((h) => `<option>${h}</option>`).join('')}</select></label>
-      <textarea id="hooks" rows="4" class="mono"></textarea>
-      <div class="row"><button id="savehooks">Save hooks</button><span class="hint">JSON list: [{"matcher":"bash","command":"./check.sh"}]. Project hooks also need approval (/hooks approve).</span></div>
-      <div class="row"><button class="secondary" id="rulesfile">Edit ${settingsScope === 'user' ? '~/.tugline/AGENTS.md' : 'AGENTS.md'} (rules)</button><button class="secondary" id="openfile">Open config file</button><button class="secondary" id="vss">VS Code settings…</button></div>`;
+      <div class="field"><label for="pp">Protected paths (one glob per line; the agent may never write these)</label><textarea id="pp" rows="3">${esc((perms.protectedPaths || []).join('\n'))}</textarea></div>
+      <div class="row"><button class="secondary" id="savepp">Save protected paths</button></div>
+      <div class="field"><label for="allow">Allow rules (e.g. <code>bash(npm test)</code>, <code>edit(src/**)</code>)</label><textarea id="allow" rows="3">${esc((perms.allow || []).join('\n'))}</textarea></div>
+      <div class="field"><label for="deny">Deny rules</label><textarea id="deny" rows="3">${esc((perms.deny || []).join('\n'))}</textarea></div>
+      <div class="row"><button class="secondary" id="saverules">Save rules</button></div>
+      <div class="field"><label for="hookev">Hooks</label><select id="hookev">${['PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop', 'SessionStart', 'SessionEnd', 'PreCompact', 'SubagentStart', 'SubagentStop', 'PermissionRequest', 'Notification'].map((h) => `<option>${h}</option>`).join('')}</select><textarea id="hooks" rows="4" class="mono"></textarea><span class="hint">JSON list: [{"matcher":"bash","command":"./check.sh"}]. Project hooks also need approval (/hooks approve).</span></div>
+      <div class="row"><button class="secondary" id="savehooks">Save hooks</button></div>
+      </details>
+      <div class="row links"><a href="#" id="rulesfile">${ic('book')}Edit ${settingsScope === 'user' ? '~/.tugline/AGENTS.md' : 'AGENTS.md'} (instructions)</a><a href="#" id="openfile">${ic('json')}Open config file</a><a href="#" id="vss">${ic('settings')}All VS Code settings</a></div>
+    </div>`;
     el.querySelector('#scope').value = settingsScope;
+    renderModelList();
+    // ---- model card
+    const bind = (id, key) => el.querySelector(id)?.addEventListener('input', (ev) => { ep[key] = ev.target.value; ep.dirty = true; });
+    bind('#epUrl', 'baseUrl');
+    bind('#epKey', 'apiKey');
+    bind('#epCtx', 'ctx');
+    bind('#epMax', 'maxOut');
+    el.querySelector('#epModel')?.addEventListener('input', (ev) => { ep.model = ev.target.value; ep.dirty = true; ep.typing = true; renderModelList(); });
+    el.querySelector('#epUrl')?.addEventListener('change', () => loadModels(false));
+    el.querySelector('#epKey')?.addEventListener('change', () => loadModels(false));
+    el.querySelector('#epModel')?.addEventListener('focus', () => loadModels(false));
+    el.querySelector('#epPreset')?.addEventListener('change', (ev) => {
+      const p = PRESETS.find((x) => x.id === ev.target.value);
+      ep.dirty = true;
+      if (p && p.url) ep.baseUrl = p.url;
+      else if (p && p.id === 'company' && PRESETS.some((x) => x.url === ep.baseUrl)) ep.baseUrl = '';
+      el.querySelector('#epUrl').value = ep.baseUrl;
+      if (p && p.id === 'company') el.querySelector('#epUrl').focus();
+      ep.models = [];
+      ep.modelsNote = '';
+      ep.suggest = '';
+      loadModels(true);
+    });
+    el.querySelector('#epKeyShow').onclick = () => { const k = el.querySelector('#epKey'); k.type = k.type === 'password' ? 'text' : 'password'; };
+    el.querySelector('#epLoad').onclick = () => loadModels(true);
+    el.querySelector('#epModels').addEventListener('click', (ev) => {
+      const mi = ev.target.closest('.mi[data-model]');
+      if (mi) {
+        ep.model = mi.dataset.model;
+        ep.typing = false;
+        ep.dirty = true;
+        el.querySelector('#epModel').value = ep.model;
+        renderModelList();
+      }
+      const sug = ev.target.closest('[data-ep="useSuggest"]');
+      if (sug) {
+        ep.baseUrl = ep.suggest;
+        ep.dirty = true;
+        el.querySelector('#epUrl').value = ep.baseUrl;
+        ep.suggest = '';
+        loadModels(true);
+      }
+    });
+    el.querySelector('.more').ontoggle = (ev) => (ep.moreOpen = ev.target.open);
+    el.querySelectorAll('#epTool button').forEach((b) => (b.onclick = () => { ep.toolMode = b.dataset.v; ep.dirty = true; el.querySelectorAll('#epTool button').forEach((x) => x.classList.toggle('on', x === b)); }));
+    el.querySelector('[data-ep="clearKey"]')?.addEventListener('click', (ev) => { ev.preventDefault(); vscode.postMessage({ type: 'settings', action: 'clearKey' }); });
+    const saveEp = () => {
+      const url = ep.baseUrl.trim();
+      if (!/^https?:\/\/\S+$/.test(url)) {
+        ep.result = { ok: false, error: 'Enter the base URL, starting with http:// or https://.' };
+        return (el.querySelector('#epResult').innerHTML = epResultHtml());
+      }
+      ep.busy = true;
+      ep.result = { busy: true, text: `Saving and testing ${ep.model || 'the endpoint'}…` };
+      vscode.postMessage({ type: 'settings', action: 'saveEndpoint', baseUrl: url, apiKey: ep.apiKey || undefined, model: ep.model.trim(), contextWindow: Number(ep.ctx) || 0, maxOutputTokens: Number(ep.maxOut) || 0, toolMode: ep.toolMode });
+      renderSettings();
+    };
+    el.querySelector('#epSave').onclick = saveEp;
+    el.querySelector('#epTest').onclick = () => {
+      ep.busy = true;
+      ep.result = { busy: true, text: 'Testing the saved endpoint…' };
+      vscode.postMessage({ type: 'settings', action: 'testEndpoint' });
+      renderSettings();
+    };
+    // ---- behaviour (VS Code settings)
+    const pref = (key, value) => vscode.postMessage({ type: 'settings', action: 'pref', key, value });
+    el.querySelector('#pfMode').onchange = (ev) => pref('permissionMode', ev.target.value);
+    el.querySelector('#pfNotify').onchange = (ev) => pref('notifications', ev.target.checked);
+    el.querySelector('#pfTerminal').onchange = (ev) => pref('visibleTerminal', ev.target.checked);
+    // ---- rules and safety (config files)
+    el.querySelector('#secRules').ontoggle = (ev) => (state.rulesOpen = ev.target.open);
     const hookText = () => JSON.stringify(hooks[el.querySelector('#hookev').value] || [], null, 2);
     el.querySelector('#hooks').value = hookText();
     el.querySelector('#hookev').onchange = () => (el.querySelector('#hooks').value = hookText());
-    el.querySelector('#scope').onchange = (e) => { settingsScope = e.target.value; renderSettings(); };
+    el.querySelector('#scope').onchange = (ev) => { settingsScope = ev.target.value; renderSettings(); };
     const lines = (id) => el.querySelector(id).value.split('\n').map((x) => x.trim()).filter(Boolean);
     const post = (m) => vscode.postMessage({ type: 'settings', scope: settingsScope, ...m });
-    el.querySelector('#pmode').onchange = (e) => e.target.value && post({ action: 'mode', value: e.target.value });
     el.querySelector('#savepp').onclick = () => post({ action: 'protectedPaths', value: lines('#pp') });
     el.querySelector('#saverules').onclick = () => post({ action: 'rules', allow: lines('#allow'), deny: lines('#deny') });
     el.querySelector('#savehooks').onclick = () => {
@@ -694,9 +1032,14 @@
         add(active, 'error', `Hooks: invalid JSON (${esc(err.message)})`);
       }
     };
-    el.querySelector('#rulesfile').onclick = () => post({ action: 'rulesFile' });
-    el.querySelector('#openfile').onclick = () => post({ action: 'openFile' });
-    el.querySelector('#vss').onclick = () => post({ action: 'vscodeSettings' });
+    el.querySelector('#rulesfile').onclick = (ev) => (ev.preventDefault(), post({ action: 'rulesFile' }));
+    el.querySelector('#openfile').onclick = (ev) => (ev.preventDefault(), post({ action: 'openFile' }));
+    el.querySelector('#vss').onclick = (ev) => (ev.preventDefault(), post({ action: 'vscodeSettings' }));
+    if (state.focusModel) {
+      state.focusModel = false;
+      el.querySelector('#sec-model').scrollIntoView({ block: 'start' });
+      (ep.baseUrl ? el.querySelector('#epModel') : el.querySelector('#epUrl'))?.focus();
+    }
   }
 
   // ------------------------------------------------------------ messages from the extension
@@ -726,17 +1069,17 @@
       }
       case 'status': {
         if (m.chatId !== active) break;
-        const sel = $('model');
-        const groups = { profiles: [], models: [] };
-        for (const it of m.picker || []) (groups[it.group] || groups.models).push(it);
-        sel.innerHTML = `<option value="" title="${esc(m.model)} (from settings)">${esc(shortModel(m.model))}</option>` + (groups.profiles.length ? `<optgroup label="Profiles">${groups.profiles.map((i) => `<option value="${esc(i.value)}">${esc(i.label)}</option>`).join('')}</optgroup>` : '') + (groups.models.length ? `<optgroup label="Endpoint models">${groups.models.map((i) => `<option value="${esc(i.value)}">${esc(i.label)}</option>`).join('')}</optgroup>` : '');
-        sel.value = m.choice || '';
-        sel.title = `${m.model} @ ${m.baseUrl}`;
-        $('effort').value = m.effort || 'default';
-        setTimeout(fitChips, 0);
+        picker.model = m.model || '';
+        picker.baseUrl = m.baseUrl || '';
+        picker.choice = m.choice || '';
+        picker.items = m.picker || [];
+        picker.effort = m.effort || 'default';
+        setModelLabel();
+        setEffortLabel();
+        $('mic').classList.toggle('hidden', !m.voice);
         if (m.mode) {
-          $('mode').value = m.mode;
-          app.dataset.mode = m.mode;
+          state.mode = m.mode;
+          setModeLabel(m.mode);
         }
         chatState(m.chatId).running = !!m.running;
         setRunning(!!m.running);
@@ -794,7 +1137,7 @@
       }
       case 'history': {
         for (const h of m.messages) {
-          if (h.role === 'user') add(cid, 'user resumed', `<div class="utext">${md(h.text.replace(/<(attached_context|ide_context)\b[\s\S]*?<\/\1>/g, '').trim())}</div>`);
+          if (h.role === 'user') add(cid, 'user resumed', userHtml(h.text.replace(/<(attached_context|ide_context|environment|environment_update|repo_map)\b[\s\S]*?<\/\1>/g, '').trim()));
           else add(cid, 'assistant', md(h.text));
         }
         add(cid, 'notice', 'Resumed from history. The agent has this conversation in its context.');
@@ -892,7 +1235,27 @@
         settingsData = m;
         renderSettings();
         break;
+      case 'endpointModels':
+        if (m.reqId !== ep.req) break;
+        ep.loading = false;
+        ep.typing = false;
+        ep.models = m.models || [];
+        ep.modelsErr = !!m.error;
+        ep.suggest = m.suggestBaseUrl || '';
+        ep.modelsNote = m.error ? m.error : ep.models.length ? `${ep.models.length} model${ep.models.length === 1 ? '' : 's'} on this endpoint: click one to use it.` : 'The endpoint listed no models. Type the model name.';
+        renderModelList();
+        break;
+      case 'endpointResult':
+        ep.busy = false;
+        // the form shows what was saved: the host's fresh settings when it sends them, else what the user typed
+        if (m.ok && m.settings) ep.dirty = false;
+        ep.apiKey = m.ok ? '' : ep.apiKey;
+        ep.result = { ok: m.ok, error: m.error, report: m.report, model: m.model };
+        if (m.settings) settingsData = m.settings;
+        if (state.view === 'settings') renderSettings();
+        break;
       case 'showView':
+        if (m.focus === 'model') state.focusModel = true;
         showView(m.view);
         break;
       case 'event':

@@ -332,7 +332,8 @@ test('N10 prefix guard: across runs the system prompt stays byte-identical when 
   await srv.close();
   const [r1, r2, r3, r4] = srv.requests;
   assert.equal(r2.messages[0].content, r1.messages[0].content, 'system prompt kept byte-identical');
-  assert.match(r1.messages[0].content, /0 changed file/);
+  assert.doesNotMatch(r1.messages[0].content, /changed file|git branch|date:/, 'no volatile line in the system prompt');
+  assert.match(String(r1.messages.at(-1).content), /<environment>[\s\S]*0 changed file[\s\S]*<\/environment>/, 'the first user message carries it');
   const u2 = String(r2.messages.at(-1).content);
   assert.match(u2, /^second/);
   assert.match(u2, /<environment_update>[\s\S]*1 changed file\(s\) \(\?\? b\.txt\)[\s\S]*<\/environment_update>/);
@@ -345,19 +346,50 @@ test('N10 prefix guard: across runs the system prompt stays byte-identical when 
   assert.ok(b[0].causes.includes('memory'), JSON.stringify(b[0].causes));
 });
 
-test('N10 prefix guard (unit): the stabiliser keeps the old prompt only for volatile environment lines', () => {
-  const p = (git: string, extra = '') => `Role\n\n# Environment\n- Workspace: /w\n- OS: linux 1 (x64); date: 2026-10-29\n- Model: m\n- git branch: main; ${git}\nrecent commits:\nabc init${extra}\n\nPermission mode: ask — x`;
+test('N10 prefix guard (unit): the volatile environment never sits in the system prompt; it rides on the user message', () => {
+  const p = (git: string, extra = '', date = '2026-10-29') => `Role\n\n# Environment\n- Workspace: /w\n- OS: linux 1 (x64); date: ${date}\n- Model: m\n- git branch: main; ${git}\nrecent commits:\nabc init${extra}\n\nPermission mode: ask — x`;
   assert.ok(volatileEnvironment(p('0 changed file(s)')));
-  const owner = {};
-  assert.deepEqual(stabilizeSystemPrompt(owner, undefined, p('0 changed file(s)')), { system: p('0 changed file(s)') });
-  const r = stabilizeSystemPrompt(owner, p('0 changed file(s)'), p('2 changed file(s)'));
-  assert.equal(r.system, p('0 changed file(s)'));
-  assert.match(r.note!, /2 changed file\(s\)/);
-  assert.equal(stabilizeSystemPrompt(owner, p('0 changed file(s)'), p('2 changed file(s)')).note, undefined, 'shown once');
-  const real = stabilizeSystemPrompt(owner, p('0 changed file(s)'), p('0 changed file(s)', '\n\n# Project instructions\nnew'));
+  const user = (content: string) => ({ role: 'user', content });
+  const first = stabilizeSystemPrompt([], p('0 changed file(s)'));
+  assert.doesNotMatch(first.system, /date:|git branch|recent commits/, 'no volatile line in the system prompt');
+  assert.match(first.system, /# Environment\n- Workspace: \/w\n- Model: m\n\nPermission mode/, 'the stable lines stay');
+  assert.match(first.note!, /^<environment>\n- OS: linux 1 \(x64\); date: 2026-10-29\n- git branch: main; 0 changed file\(s\)/, 'shown in full when the conversation does not show it');
+  const h1 = [{ role: 'system', content: first.system }, user(`hi\n\n${first.note}`), { role: 'assistant', content: 'ok' }];
+  assert.equal(stabilizeSystemPrompt(h1, p('0 changed file(s)')).note, undefined, 'already shown');
+  const r = stabilizeSystemPrompt(h1, p('2 changed file(s)'));
+  assert.equal(r.system, first.system, 'byte-identical after a change');
+  assert.match(r.note!, /<environment_update>[\s\S]*2 changed file\(s\)/);
+  const h2 = [...h1, user(`next\n\n${r.note}`)];
+  assert.equal(stabilizeSystemPrompt(h2, p('2 changed file(s)')).note, undefined, 'an update counts as shown');
+  const real = stabilizeSystemPrompt(h2, p('2 changed file(s)', '\n\n# Project instructions\nnew'));
   assert.equal(real.note, undefined);
   assert.match(real.system, /Project instructions/, 'a real change uses the fresh prompt');
-  assert.equal(stabilizeSystemPrompt({}, p('a'), p('b'), false).system, p('b'), 'promptCache.stableEnvironment: false');
+  // a cleared, truncated or compacted conversation that lost the block gets it again
+  assert.match(stabilizeSystemPrompt([{ role: 'system', content: first.system }, user('summary of earlier work')], p('2 changed file(s)')).note!, /^<environment>/);
+  // the point: a NEW chat, on another day with other git state, sends the same system prompt bytes
+  const other = stabilizeSystemPrompt([], p('5 changed file(s)', '', '2026-11-12'));
+  assert.equal(other.system, first.system, 'new chats share the cached prefix');
+  assert.match(other.note!, /date: 2026-11-12/);
+  assert.equal(stabilizeSystemPrompt([], p('b'), false).system, p('b'), 'promptCache.stableEnvironment: false');
+});
+
+test('N10 prefix guard: after clear() and truncateTo() the environment and the repo map are sent again', async () => {
+  const ws = tmpWorkspace({ 'src/calc.ts': 'export function average(xs: number[]) {\n  return xs.length;\n}\n' });
+  const srv = await cacheMock(() => ({ content: 'ok' }));
+  const agent = await Agent.create({ workspace: ws, config: testConfig(srv.url, { permissionMode: 'yolo', agent: { repoMapTokens: 1500, repoMapWaitMs: 5000 } }), mcp: false });
+  const last = (i: number) => String(srv.requests[i].messages.at(-1).content);
+  await agent.run('first');
+  await agent.run('second');
+  agent.clear();
+  await agent.run('after clear');
+  agent.truncateTo(1);
+  await agent.run('after edit');
+  await srv.close();
+  await agent.dispose();
+  assert.match(last(0), /<repo_map[\s\S]*<environment>/);
+  assert.doesNotMatch(last(1), /<repo_map|<environment/);
+  assert.match(last(2), /^after clear[\s\S]*<repo_map[\s\S]*<environment>/, 'clear');
+  assert.match(last(3), /^after edit[\s\S]*<repo_map[\s\S]*<environment>/, 'truncate to before the first message');
 });
 
 // ------------------------------------------------------------------ idle compaction
@@ -547,4 +579,21 @@ test('N10 (review fix): a compaction outside a run still swaps when the history 
   assert.ok(text.includes('SUMMARY'), 'the compaction applied');
   assert.ok(text.includes('five'), 'the later prompt is kept');
   assert.equal(agent.messages[0].role, 'system');
+});
+
+test('N10 prefix guard: a loaded conversation (resume, fork) does not repeat the environment it already carries', async () => {
+  const ws = tmpWorkspace({ 'a.txt': 'one\n' });
+  const srv = await cacheMock(() => ({ content: 'ok' }));
+  const cfg = testConfig(srv.url, { permissionMode: 'yolo', ...NO_MAP });
+  const a = await Agent.create({ workspace: ws, config: cfg, mcp: false });
+  await a.run('first');
+  const b = await Agent.create({ workspace: ws, config: cfg, mcp: false });
+  b.loadHistory(a.messages.filter((m) => m.role !== 'system'));
+  await b.run('after fork');
+  await srv.close();
+  await a.dispose();
+  await b.dispose();
+  assert.match(String(srv.requests[0].messages.at(-1).content), /<environment>/, 'the first agent shows it');
+  assert.doesNotMatch(String(srv.requests[1].messages.at(-1).content), /<environment/, 'the fork does not repeat it');
+  assert.equal(srv.requests[1].messages[0].content, srv.requests[0].messages[0].content, 'same system prompt');
 });

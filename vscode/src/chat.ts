@@ -14,7 +14,7 @@ import path from 'node:path';
 import { Agent, type AgentUI } from '../../src/core/agent/agent.js';
 import { loadConfig, resolveProfile, trustWorkspace, type HarnessConfig } from '../../src/core/config.js';
 import { probeEndpoint } from '../../src/core/llm/probe.js';
-import { LLMClient } from '../../src/core/llm/client.js';
+import { LLMClient, LLMError } from '../../src/core/llm/client.js';
 import type { AgentEvent, ContentPart, PermissionAnswer, PermissionMode, PermissionRequest } from '../../src/core/types.js';
 import type { ToolDef } from '../../src/core/tools/types.js';
 import { contextBreakdown } from '../../src/core/context/breakdown.js';
@@ -36,7 +36,7 @@ import { Notifier } from './notify.js';
 import { createVisibleRunner, openJobTerminal, type TerminalOutputTracker } from './terminal.js';
 import type { VisibleTerminalRunner } from './terminalRunner.js';
 import { dispatchSlash, slashItems } from './slash.js';
-import { clientProfile, explicitSettings, governedConfig, ideFromSettings, lockedFields, mergeIde } from './settingsConfig.js';
+import { clientProfile, explicitSettings, governedConfig, ideFromSettings, lockedFields, mergeIde, sameOrigin } from './settingsConfig.js';
 import { serverModels, setupCheck, type OnboardingView } from './onboarding.js';
 import { detectOllama, effectiveContext, LOCAL_SERVERS, ollamaModelInfo, OLLAMA_SETTINGS_HINT, type LocalServer } from '../../src/core/llm/ollama.js';
 import { loginMcpServer, logoutMcpServer } from './mcpAuth.js';
@@ -89,6 +89,8 @@ export interface ChatState {
   title: string;
   agent?: Agent;
   agentKey: string;
+  /** serialises getAgent for this chat */
+  agentLock?: Promise<void>;
   host: VsCodeBufferHost;
   runner?: VisibleTerminalRunner;
   selection: ModelSelection;
@@ -183,6 +185,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 <meta name="viewport" content="width=device-width, initial-scale=1.0"><link href="${icons}" rel="stylesheet"><link href="${style}" rel="stylesheet"><title>Tugline</title></head>
 <body><div id="app"></div><script nonce="${nonce}" src="${script}"></script></body></html>`;
     view.webview.onDidReceiveMessage((m: any) => this.onMessage(m).catch((e) => this.post({ type: 'error', message: (e as Error).message })));
+    if (this.active) this.prewarm(this.active);
   }
 
   get panelVisible(): boolean {
@@ -283,6 +286,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       this.post({ type: 'history', chatId: id, messages: msgs.filter((m) => m.role === 'user' || (m.role === 'assistant' && m.content)).map((m) => ({ role: m.role, text: contentToText(m.content) })) });
     }
     this.sendStatus();
+    if (this.view) this.prewarm(chat);
     return chat;
   }
 
@@ -448,7 +452,35 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   /** Get (or build) the chat's agent. Rebuilt when the endpoint/settings changed, keeping the conversation. */
-  async getAgent(chat: ChatState): Promise<Agent | undefined> {
+  /** The chat's agent, built on first use. Calls are serialised per chat (a prewarm and a send never build two). */
+  getAgent(chat: ChatState): Promise<Agent | undefined> {
+    const run = (chat.agentLock ?? Promise.resolve()).then(() => this.buildAgent(chat));
+    chat.agentLock = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
+  /**
+   * Build the chat's agent and warm what its first prompt needs (the repo map) in the background, as soon as the
+   * chat opens, so the first message does not wait for it.
+   */
+  private prewarm(chat: ChatState): void {
+    if (!(chat.worktree?.path ?? this.workspaceRoot())) return;
+    setTimeout(() => {
+      if (chat.busy || !this.chats.has(chat.id) || chat.agent) return;
+      this.getAgent(chat)
+        .then((a) => {
+          // the chat was closed while its agent was being built: nobody else will dispose it
+          if (a && !this.chats.has(chat.id)) return a.dispose();
+          return a?.prewarm();
+        })
+        .catch((e) => this.log.appendLine(`[prewarm] ${(e as Error).message}`));
+    }, 300);
+  }
+
+  private async buildAgent(chat: ChatState): Promise<Agent | undefined> {
     // N12: a worktree session works inside its worktree
     const ws = chat.worktree?.path ?? this.workspaceRoot();
     if (!ws) {
@@ -567,6 +599,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       picker: items,
       choice: chat.selection.choice ?? '',
       effort: chat.selection.effort ?? 'default',
+      voice: vscode.workspace.getConfiguration('tugline').get<boolean>('voice.enabled', false),
     });
   }
 
@@ -857,8 +890,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     return dispatchSlash(text, {
       agent,
       write: (t) => this.post({ type: 'notice', chatId: chat.id, level: 'cmd', message: t }),
-      ask: async (question, options) =>
-        options?.length ? ((await vscode.window.showQuickPick(options, { title: question, ignoreFocusOut: true })) ?? '') : ((await vscode.window.showInputBox({ title: question, ignoreFocusOut: true })) ?? ''),
+      // in the chat, like the agent's own questions (not the command palette)
+      ask: async (question, options) => String((await this.request(chat, 'ask', { question, options }, question)) ?? ''),
       newChat: () => void this.newChat(),
       setModel: (choice) => this.setModel(chat, { choice }),
     });
@@ -1121,11 +1154,157 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         return { file: '', text: '' };
       }
     };
+    this.post(await this.settingsPayload(read, rules, !!ws));
+  }
+
+  /** The settings view's data: config files, the model endpoint (never the key itself) and the behaviour settings. */
+  private async settingsPayload(read: (s: ConfigScope) => any, rules: (s: ConfigScope) => any, hasWorkspace: boolean): Promise<any> {
     const cfg = this.active.agent?.config;
-    this.post({ type: 'settings', user: read('user'), project: read('project'), rules: { user: rules('user'), project: rules('project') }, trusted: cfg?.trust?.workspaceTrusted ?? false, hasWorkspace: !!ws });
+    const s = vscode.workspace.getConfiguration('tugline');
+    let locked: { baseUrl?: string; model?: string } = {};
+    let p: { baseUrl: string; model: string; contextWindow?: number; maxOutputTokens?: number; toolMode?: string } = { baseUrl: s.get<string>('baseUrl') ?? '', model: s.get<string>('model') ?? '' };
+    try {
+      const built = await this.buildConfig(this.workspaceRoot() ?? process.cwd());
+      locked = lockedFields(built) ?? {};
+      p = clientProfile(built) as any;
+    } catch {
+      /* config errors are shown when the agent is built */
+    }
+    // the effective values (config files, then explicit settings, then the managed policy), never the contributed defaults
+    const endpoint = {
+      baseUrl: p.baseUrl,
+      model: p.model,
+      contextWindow: p.contextWindow,
+      maxOutputTokens: p.maxOutputTokens,
+      toolMode: p.toolMode ?? 'auto',
+      hasKey: !!(await this.ctx.secrets.get(SECRET_KEY)),
+      locked,
+    };
+    const prefs = { permissionMode: s.get<string>('permissionMode') ?? 'ask', notifications: s.get<boolean>('notifications') ?? true, visibleTerminal: s.get<boolean>('visibleTerminal') ?? false };
+    return { type: 'settings', user: read('user'), project: read('project'), rules: { user: rules('user'), project: rules('project') }, trusted: cfg?.trust?.workspaceTrusted ?? false, hasWorkspace, endpoint, prefs };
+  }
+
+  /** The settings view's model list for a base URL (and key) the user is typing, before anything is saved. */
+  private async listEndpointModels(m: any): Promise<void> {
+    const reply = (x: object) => this.post({ type: 'endpointModels', reqId: m.reqId, ...x });
+    const baseUrl = String(m.baseUrl ?? '').trim();
+    if (!/^https?:\/\/\S+$/.test(baseUrl)) return reply({ models: [], error: 'Enter a base URL starting with http:// or https://.' });
+    let apiKey = typeof m.apiKey === 'string' && m.apiKey ? m.apiKey : '';
+    try {
+      const cfg = await this.buildConfig(this.workspaceRoot() ?? process.cwd());
+      const locked = lockedFields(cfg);
+      // C4: never send the API key to a URL typed here when the organisation locked the endpoint
+      if (locked?.baseUrl && baseUrl !== locked.baseUrl) return reply({ models: [], error: 'Your organisation manages the endpoint.' });
+      // the saved key only goes to the server it was saved for: browsing providers never sends it elsewhere
+      if (!apiKey && sameOrigin(baseUrl, (clientProfile(cfg) as any).baseUrl)) apiKey = (await this.ctx.secrets.get(SECRET_KEY)) ?? '';
+    } catch (e) {
+      return reply({ models: [], error: (e as Error).message.slice(0, 400) });
+    }
+    try {
+      const ids = await new LLMClient({ name: 'settings', baseUrl, apiKey, model: '', contextWindow: 0, maxOutputTokens: 0, toolMode: 'auto', vision: false, timeoutMs: 8000 } as any).listModels(AbortSignal.timeout(15_000));
+      const coder = (id: string) => /coder|code|devstral|codestral/i.test(id);
+      const models = [...ids].sort((a, b) => Number(coder(b)) - Number(coder(a)) || a.localeCompare(b)).map((id) => ({ id, tags: [coder(id) ? 'coder' : '', /vl\b|vision|llava/i.test(id) ? 'vision' : ''].filter(Boolean) }));
+      reply({ models });
+    } catch (e) {
+      const notApi = e instanceof LLMError && e.kind === 'not_api';
+      reply({ models: [], error: (e as Error).message.slice(0, 400), ...(notApi && (e as LLMError).suggestedBaseUrl ? { suggestBaseUrl: (e as LLMError).suggestedBaseUrl } : {}) });
+    }
+  }
+
+  /** Save the endpoint from the settings view, then test it; the result goes back to the view (and the status bar). */
+  private async saveEndpoint(m: any): Promise<void> {
+    const s = vscode.workspace.getConfiguration('tugline');
+    const fail = (error: string) => this.post({ type: 'endpointResult', ok: false, error });
+    const baseUrl = String(m.baseUrl ?? '').trim();
+    if (!/^https?:\/\/\S+$/.test(baseUrl)) return fail('Enter a base URL starting with http:// or https://.');
+    try {
+      const cfg = await this.buildConfig(this.workspaceRoot() ?? process.cwd());
+      const locked = lockedFields(cfg);
+      const cur = clientProfile(cfg) as any;
+      const g = vscode.ConfigurationTarget.Global;
+      // only what the user changed is written: the effective values may come from config files (or a workspace)
+      if (!locked?.baseUrl && baseUrl !== cur.baseUrl) await s.update('baseUrl', baseUrl, g);
+      const model = String(m.model ?? '').trim();
+      if (model && !locked?.model && model !== cur.model) await s.update('model', model, g);
+      const num = (v: unknown) => (Number(v) > 0 ? Math.floor(Number(v)) : 0);
+      if (num(m.contextWindow) && num(m.contextWindow) !== cur.contextWindow) await s.update('contextWindow', num(m.contextWindow), g);
+      if (num(m.maxOutputTokens) && num(m.maxOutputTokens) !== cur.maxOutputTokens) await s.update('maxOutputTokens', num(m.maxOutputTokens), g);
+      if (['auto', 'native', 'text'].includes(m.toolMode) && m.toolMode !== (cur.toolMode ?? 'auto')) await s.update('toolMode', m.toolMode, g);
+      if (typeof m.apiKey === 'string' && m.apiKey) await this.ctx.secrets.store(SECRET_KEY, m.apiKey);
+    } catch (e) {
+      return fail((e as Error).message);
+    }
+    for (const c of this.chats.values()) if (!c.busy) c.agentKey = '';
+    await this.testEndpoint();
+    void this.refreshModels();
+  }
+
+  /** Probe the saved endpoint for the settings view (chat works? native tool calls? how fast?). */
+  private async testEndpoint(): Promise<void> {
+    let p: any = {};
+    let report: Awaited<ReturnType<typeof probeEndpoint>> | undefined;
+    try {
+      p = clientProfile(await this.buildConfig(this.workspaceRoot() ?? process.cwd()));
+      report = await probeEndpoint({ name: 'probe', contextWindow: 32768, maxOutputTokens: 1024, toolMode: 'auto', vision: false, ...p });
+    } catch (e) {
+      this.post({ type: 'endpointResult', ok: false, error: (e as Error).message });
+      return;
+    }
+    const ok = report.chatOk;
+    const error = ok ? undefined : report.errors.join(' | ') || `No reply from ${p.model} at ${p.baseUrl}.`;
+    this.updateStatus();
+    this.sendStatus();
+    const settings = await this.settingsPayloadNow();
+    this.post({ type: 'endpointResult', ok, error, report, model: p.model, settings });
+  }
+
+  private async settingsPayloadNow(): Promise<any> {
+    const ws = this.workspaceRoot();
+    const home = (this.active.agent?.config ?? (await this.buildConfig(ws ?? process.cwd()))).homeDir;
+    const read = (scope: ConfigScope) => {
+      try {
+        const f = configFile(scope, home, ws);
+        return { file: f, data: readConfigFile(f), exists: fs.existsSync(f) };
+      } catch (e) {
+        return { file: '', data: {}, exists: false, error: (e as Error).message };
+      }
+    };
+    const rules = (scope: ConfigScope) => {
+      try {
+        const f = rulesFile(scope, home, ws);
+        return { file: f, text: fs.existsSync(f) ? fs.readFileSync(f, 'utf8').slice(0, 20000) : '' };
+      } catch {
+        return { file: '', text: '' };
+      }
+    };
+    return this.settingsPayload(read, rules, !!ws);
+  }
+
+  /** Show the chat panel's settings at the model card (the "Configure endpoint" command and links). */
+  showModelSettings(): void {
+    void vscode.commands.executeCommand('tugline.chat.focus').then(() => this.post({ type: 'showView', view: 'settings', focus: 'model' }));
   }
 
   async settingsAction(m: any): Promise<void> {
+    switch (m.action) {
+      case 'endpointModels':
+        return this.listEndpointModels(m);
+      case 'saveEndpoint':
+        return this.saveEndpoint(m);
+      case 'testEndpoint':
+        return this.testEndpoint();
+      case 'clearKey':
+        await this.ctx.secrets.delete(SECRET_KEY);
+        for (const c of this.chats.values()) if (!c.busy) c.agentKey = '';
+        return this.postSettings();
+      case 'pref': {
+        const allowed: Record<string, (v: unknown) => boolean> = { permissionMode: (v) => isPermissionMode(v as string), notifications: (v) => typeof v === 'boolean', visibleTerminal: (v) => typeof v === 'boolean' };
+        if (typeof m.key !== 'string' || !Object.hasOwn(allowed, m.key) || !allowed[m.key](m.value)) return;
+        if (m.key === 'permissionMode' && m.value === 'yolo') void vscode.window.showWarningMessage(YOLO_WARNING);
+        await vscode.workspace.getConfiguration('tugline').update(m.key, m.value, vscode.ConfigurationTarget.Global);
+        return;
+      }
+    }
     const ws = this.workspaceRoot();
     const home = (this.active.agent?.config ?? (await this.buildConfig(ws ?? process.cwd()))).homeDir;
     const scope: ConfigScope = m.scope === 'project' ? 'project' : 'user';
@@ -1254,7 +1433,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         await this.onboardAction(m);
         return;
       case 'configure':
-        await vscode.commands.executeCommand('tugline.configure');
+        this.post({ type: 'showView', view: 'settings', focus: 'model' });
+        return;
+      case 'copy':
+        if (typeof m.text === 'string') await vscode.env.clipboard.writeText(m.text);
         return;
       case 'testConnection':
         await this.testConnection();

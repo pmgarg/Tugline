@@ -171,31 +171,49 @@ export function volatileEnvironment(system: string): { normalized: string; volat
   return { normalized, volatile: vol.join('\n') };
 }
 
-/** Per agent: the volatile environment the model last saw (system prompt or an update note). */
-const lastShown = new WeakMap<object, string>();
+/** The system prompt without its volatile environment lines (what is sent when promptCache.stableEnvironment is on). */
+export function stableSystemPrompt(fresh: string, enabled = true): string {
+  const f = enabled ? volatileEnvironment(fresh) : undefined;
+  return f ? f.normalized.replace('\n<volatile>', '') : fresh;
+}
+
+/** The text of a message's content (string or parts). */
+const textOf = (c: unknown): string => (typeof c === 'string' ? c : Array.isArray(c) ? c.map((p: any) => (p?.type === 'text' ? p.text : '')).join('\n') : '');
 
 /**
- * Called when a run starts with the previous and the freshly built system
- * prompt. Keeps `prev` when only volatile environment lines changed, and
- * returns those lines as a note for the user message (once per change).
+ * The volatile environment the conversation already shows the model: the last <environment> or
+ * <environment_update> block in its user messages. Read from the history itself, so a cleared, truncated, edited,
+ * compacted or resumed conversation shows it again exactly when its block is gone.
  */
-export function stabilizeSystemPrompt(owner: object, prev: string | undefined, fresh: string, enabled = true): { system: string; note?: string } {
+export function shownEnvironment(messages: { role: string; content: unknown }[]): string | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role !== 'user') continue;
+    const text = textOf(messages[i].content);
+    const env = /<environment>\n([\s\S]*?)\n<\/environment>/.exec(text)?.[1] ?? /<environment_update>\n[^\n]*\n([\s\S]*?)\n<\/environment_update>/.exec(text)?.[1];
+    if (env !== undefined) return env;
+  }
+  return undefined;
+}
+
+/**
+ * Called when a run starts with the conversation so far and the freshly built system prompt.
+ *
+ * The volatile environment lines (OS/date, git branch and status, recent commits) never go in the system prompt:
+ * the system prompt and the tool list are then byte-identical across runs, chats and days, and a model server's
+ * prefix cache (vLLM, llama.cpp, Ollama, SGLang) keeps them, so a new chat does not re-process thousands of
+ * tokens. Those lines ride on the user message instead: in full when the conversation does not show them, then only
+ * when they changed. (They used to be in the system prompt of each new chat, so every new chat after a commit or on
+ * a new day missed the cache from the Environment section on, the whole tool list included.)
+ */
+export function stabilizeSystemPrompt(history: { role: string; content: unknown }[], fresh: string, enabled = true): { system: string; note?: string } {
   const f = volatileEnvironment(fresh);
-  if (!enabled || prev === undefined || prev === fresh) {
-    if (f) lastShown.set(owner, f.volatile);
-    return { system: fresh };
-  }
-  const p = volatileEnvironment(prev);
-  if (!f || !p || f.normalized !== p.normalized) {
-    // a real change (memory, mode, skills, overlay…): the fresh prompt is used and the guard reports the break
-    lastShown.set(owner, f?.volatile ?? '');
-    return { system: fresh };
-  }
-  const shown = lastShown.get(owner) ?? p.volatile;
-  lastShown.set(owner, f.volatile);
-  if (shown === f.volatile) return { system: prev };
+  if (!enabled || !f) return { system: fresh };
+  const system = stableSystemPrompt(fresh);
+  const shown = shownEnvironment(history);
+  if (shown === f.volatile) return { system };
+  if (shown === undefined) return { system, note: `<environment>\n${f.volatile}\n</environment>` };
   return {
-    system: prev,
-    note: `<environment_update>\nThe environment changed since the system prompt was written (the system prompt is kept unchanged so the server's prompt cache stays valid). Current state:\n${f.volatile}\n</environment_update>`,
+    system,
+    note: `<environment_update>\nThe environment changed since it was last shown. Current state:\n${f.volatile}\n</environment_update>`,
   };
 }

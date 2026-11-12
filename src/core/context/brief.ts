@@ -36,7 +36,8 @@ export interface TaskBrief {
 /** Text that the harness itself wraps around a prompt and that is not the user's own words. */
 function cleanPrompt(text: string): string {
   return text
-    .replace(/\n*<repo_map\b[^>]*>[\s\S]*?<\/repo_map>\s*$/, '')
+    // harness attachments are not the user's words: the repo map and the environment blocks, wherever they sit
+    .replace(/\n*<(repo_map|environment|environment_update)\b[^>]*>[\s\S]*?<\/\1>/g, '')
     .replace(/^\[user steer\]\s*/, '')
     .trim();
 }

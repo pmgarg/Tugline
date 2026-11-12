@@ -317,7 +317,9 @@ export function activate(ctx: vscode.ExtensionContext): TuglineApi {
     }),
     vscode.commands.registerCommand('tugline.history.clearSearch', () => history.setFilter('')),
     vscode.commands.registerCommand('tugline.history.refresh', () => history.refresh()),
-    vscode.commands.registerCommand('tugline.configure', () => configureWizard(ctx, provider)),
+    // the model card in the chat panel's settings (the palette wizard stays as "Configure LLM Endpoint (step by step)")
+    vscode.commands.registerCommand('tugline.configure', () => provider.showModelSettings()),
+    vscode.commands.registerCommand('tugline.configureWizard', () => configureWizard(ctx, provider)),
     // WS12: the generated wiki in a panel, and /doc for the selection (a reviewable docstring edit)
     vscode.commands.registerCommand('tugline.openWiki', () => {
       const ws = workspaceRoot();

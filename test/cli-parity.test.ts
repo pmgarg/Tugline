@@ -11,7 +11,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { PassThrough } from 'node:stream';
 import readline from 'node:readline';
 import Ajv2020 from 'ajv/dist/2020.js';
-import { startMockServer, testConfig, tmpWorkspace, trackTmp, type MockServer } from './helpers.js';
+import { startMockServer, testConfig, tmpWorkspace, trackTmp, type MockServer, withoutEnvironment } from './helpers.js';
 import { headlessJsonSchema, HEADLESS_SCHEMA_VERSION } from '../src/cli/output.js';
 import { palette, resolveTheme } from '../src/cli/theme.js';
 import { attachVim, vimInit, vimKey, type VimState } from '../src/cli/vim.js';
@@ -49,7 +49,7 @@ async function mock(script: Parameters<typeof startMockServer>[0] = () => ({ con
 }
 const base = (srv: MockServer, ws: string) => ['--cwd', ws, '--base-url', srv.url, '--model', 'mock-model', '--native-tools'];
 const sys = (body: any) => String(body.messages.find((m: any) => m.role === 'system')?.content ?? '');
-const userTexts = (body: any) => body.messages.filter((m: any) => m.role === 'user').map((m: any) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)));
+const userTexts = (body: any) => body.messages.filter((m: any) => m.role === 'user').map((m: any) => withoutEnvironment(typeof m.content === 'string' ? m.content : JSON.stringify(m.content)));
 
 // ------------------------------------------------------------------ AC2: published schema
 
@@ -407,7 +407,7 @@ test('N49 AC1 /btw answers a side question without adding it to the conversation
   const r = await s.run('btw', 'what is 2+2?');
   assert.equal(r.out.trim(), 'four');
   assert.equal(s.agent.messages.length, before, 'history untouched');
-  assert.ok(s.srv.requests.at(-1).messages.some((m: any) => m.content === 'main task'), 'the side question sees the conversation');
+  assert.ok(s.srv.requests.at(-1).messages.some((m: any) => withoutEnvironment(m.content) === 'main task'), 'the side question sees the conversation');
   assert.equal(s.agent.totals.llmCalls >= 1, true);
   await s.dispose();
 });

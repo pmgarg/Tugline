@@ -428,3 +428,25 @@ test('N22 review 4: a cache rolled back to an older signed document (future fetc
   assert.ok(r.problems.some((p) => /older than one already verified|rollback/.test(p)), r.problems.join('; '));
   fs.rmSync(home, { recursive: true, force: true });
 });
+
+test('N23: audit export --since uses local calendar days (UTC+4 just after midnight keeps "today")', async () => {
+  const { readAuditEvents } = await import('../src/core/permissions/audit.js');
+  const { parseSince } = await import('../src/core/permissions/limits.js');
+  const prevTz = process.env.TZ;
+  process.env.TZ = 'Asia/Dubai';
+  try {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'oh-audit-tz-'));
+    const dir = auditDir(home);
+    fs.mkdirSync(dir, { recursive: true });
+    const ev = (ts: string, reason: string) => JSON.stringify({ v: 1, type: 'approval', ts, category: 'execute', decision: 'allow', by: 'policy', reason, session: 's', depth: 0, user: 'u', host: 'h' });
+    // 00:04 on the 13th in Dubai is 20:04 on the 12th UTC; 23:00 on the 12th in Dubai is 19:00 UTC
+    fs.writeFileSync(path.join(dir, 'security-x.jsonl'), [ev('2026-11-12T20:04:39.000Z', 'just after local midnight'), ev('2026-11-12T19:00:00.000Z', 'local yesterday evening')].join('\n') + '\n');
+    const today = parseSince('1d', new Date('2026-11-12T20:10:00.000Z'));
+    assert.equal(today, '2026-11-13');
+    assert.deepEqual(readAuditEvents(home, today).map((e) => e.reason), ['just after local midnight']);
+    assert.equal(readAuditEvents(home, parseSince('2d', new Date('2026-11-12T20:10:00.000Z'))).length, 2);
+  } finally {
+    if (prevTz === undefined) delete process.env.TZ;
+    else process.env.TZ = prevTz;
+  }
+});

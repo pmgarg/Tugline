@@ -297,3 +297,15 @@ test('R14: a corrupt or missing state file is rebuilt from the journal records',
   assert.deepEqual(c.brief.entries.map((e) => e.text), [`Rename the module. ${CRIT}`]);
   await srv.close();
 });
+
+test('R5: the brief keeps the user\'s words only: no repo map or environment block, wherever they sit', async () => {
+  const { briefFromMessages } = await import('../src/core/context/brief.js');
+  const b = briefFromMessages([
+    { role: 'system', content: 'sys' },
+    { role: 'user', content: 'Port the parser to Rust.\n\n<repo_map id="x">\nsrc/a.ts:\n  ⋮ function f()\n</repo_map>\n\n<environment>\n- OS: linux; date: 2026-11-13\n- git branch: main; 0 changed file(s)\n</environment>' },
+    { role: 'assistant', content: 'ok' },
+    { role: 'user', content: 'also keep the API\n\n<environment_update>\nThe environment changed since it was last shown. Current state:\n- git branch: main; 2 changed file(s)\n</environment_update>' },
+  ] as any);
+  const texts = b.entries.map((e: any) => e.text);
+  assert.deepEqual(texts, ['Port the parser to Rust.', 'also keep the API']);
+});

@@ -36,7 +36,7 @@ import { registerCliCommand } from '../commands.js';
 import { addTelemetryEvent } from '../telemetry/otel.js';
 import { redactSecrets } from '../util/text.js';
 import { auditSinkFor } from './auditSink.js';
-import { parseSince } from './limits.js';
+import { localDate, parseSince } from './limits.js';
 
 export const SECURITY_EVENT_TYPES = ['refusal', 'approval', 'taint', 'protected_restore', 'sandbox', 'secret_redaction', 'policy_violation'] as const;
 export type SecurityEventType = (typeof SECURITY_EVENT_TYPES)[number];
@@ -346,7 +346,9 @@ export function readAuditEvents(homeDir: string, sinceDate?: string): (SecurityE
       if (!line.trim()) continue;
       try {
         const e = JSON.parse(line) as SecurityEvent & { _h?: string };
-        if (sinceDate && e.ts.slice(0, 10) < sinceDate) continue;
+        // --since names local calendar days (parseSince): compare the event's local date, not its UTC date (east of
+        // UTC, events just after local midnight were dropped from "today"; west of UTC, late events were kept a day longer)
+        if (sinceDate && localDate(new Date(e.ts)) < sinceDate) continue;
         out.push({ ...e, _file: f });
       } catch {
         /* a broken line is reported by verify */

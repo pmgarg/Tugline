@@ -52,6 +52,8 @@ declare module '../config.js' {
     repoMapMaxFiles?: number;
     /** R15: persist per-file extraction under <homeDir>/index/<project>/ so later sessions reparse only changed files (default true) */
     repoMapCache?: boolean;
+    /** How long a prompt waits for the repo map before it is sent without it (the map then rides on the next prompt). Default 3000 ms. */
+    repoMapWaitMs?: number;
     /** D8: pre-build the compaction summary in the background at 60% of the budget (default true) */
     backgroundCompaction?: boolean;
     /** G2: after untrusted content is read, outbound actions (exfiltration, publishing, persistence, outside writes) need a human. Default 'ask'. */
@@ -84,6 +86,7 @@ export interface CoreSettings {
   repoMapExclude: string[];
   repoMapMaxFiles: number;
   repoMapCache: boolean;
+  repoMapWaitMs: number;
   backgroundCompaction: boolean;
   taint: 'ask' | 'off';
   taintShellNetwork: 'none' | 'registries';
@@ -107,6 +110,7 @@ export const DEFAULT_CORE_SETTINGS: CoreSettings = {
   repoMapExclude: ['**/evals/**/tasks/**'],
   repoMapMaxFiles: 0,
   repoMapCache: true,
+  repoMapWaitMs: 3000,
   backgroundCompaction: true,
   taint: 'ask',
   taintShellNetwork: 'none',
@@ -123,6 +127,7 @@ export function coreSettings(cfg: HarnessConfig): CoreSettings {
   for (const k of Object.keys(out) as (keyof CoreSettings)[]) if (a[k] !== undefined && a[k] !== null) (out as any)[k] = a[k];
   out.maxParallelSubagents = Math.max(1, Math.floor(Number(out.maxParallelSubagents) || 1));
   out.repoMapTokens = Math.max(0, Math.floor(Number(out.repoMapTokens) || 0));
+  out.repoMapWaitMs = Math.max(0, Math.floor(Number(out.repoMapWaitMs ?? 3000)));
   out.checkTimeoutMs = Math.max(1000, Math.min(Math.floor(Number(out.checkTimeoutMs) || 600_000), 3_600_000));
   if (out.harnessCheck !== 'off') out.harnessCheck = 'auto';
   return out;

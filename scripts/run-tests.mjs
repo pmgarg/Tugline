@@ -23,7 +23,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 // browser-extension drives a real Chromium too: in the parallel group its pairing timed out on a loaded runner
-const SERIAL = /^(browser-driver|browser-agent|browser-extension|desktop-driver|desktop-agent)\.test\.ts$/;
+const SERIAL = /^(browser-driver|browser-agent|browser-extension|webview-ui|desktop-driver|desktop-agent)\.test\.ts$/;
 const dir = path.resolve('test');
 const files = fs.readdirSync(dir).filter((f) => f.endsWith('.test.ts')).sort();
 // v1.2 (WS18): the surface conformance suite (V0.1) and the parity audit (V0.2) live in their own directories

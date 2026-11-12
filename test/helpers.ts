@@ -148,3 +148,8 @@ export function needsPytest(): string | false {
   }
   return pytestSkip;
 }
+
+/** A user message's text without the environment block the first message of an agent carries (prefix cache, N10). */
+export function withoutEnvironment(content: unknown): string {
+  return String(content).replace(/\n\n<environment>\n[\s\S]*?\n<\/environment>$/, '');
+}

@@ -541,7 +541,7 @@ Set it per model with `editFormat` on the profile. Behaviour you can rely on:
 
 **Skills.** `SKILL.md` folders in `.tugline/skills`, `.claude/skills`, `.agents/skills`, `.codex/skills`, `skills.dirs`, `~/.tugline/skills`, `~/.claude/skills`, `~/.codex/skills`, then the bundled ones. `skills.disabled` turns some off.
 
-**Repo map.** The first prompt of a session includes a ranked map of definitions (`agent.repoMapTokens`, 1500; 0 = off). Only files the read policy allows without asking are mapped; secret files never are. The `repo_map` tool builds one focused on given files. There is no file cap (`agent.repoMapMaxFiles`, 0 = all); per-file parses are cached in `~/.tugline/index/<project>/repomap.json`, so a new session reparses only files whose content changed (`agent.repoMapCache: false` keeps the cache in memory only).
+**Repo map.** The first prompt of a session includes a ranked map of definitions (`agent.repoMapTokens`, 1500; 0 = off). Only files the read policy allows without asking are mapped; secret files never are. The `repo_map` tool builds one focused on given files. There is no file cap (`agent.repoMapMaxFiles`, 0 = all); per-file parses are cached in `~/.tugline/index/<project>/repomap.json`, so a new session reparses only files whose content changed (`agent.repoMapCache: false` keeps the cache in memory only). A prompt waits at most `agent.repoMapWaitMs` (3000) for the map; if it is not ready (a first build on a large repository), the prompt is sent without it and the map comes with the next prompt. The VS Code panel builds the map in the background as soon as a chat opens.
 
 **Code search (`code_search`).** Finds code by meaning or keywords and returns the best functions, classes or doc sections as `file:lines` with a snippet. Chunks follow definition boundaries (tree-sitter, else the repo-map regexes); ranking fuses BM25 keyword scores with embedding similarity (reciprocal rank fusion). Embeddings come from any OpenAI-compatible `/v1/embeddings` endpoint, so nothing leaves your network:
 ```json
@@ -1293,6 +1293,7 @@ Config files, later wins: built-in defaults → `~/.tugline/config.json` → `<w
 | `repoMapExclude` | `["**/evals/**/tasks/**"]` |
 | `repoMapMaxFiles` | `0` (no limit; was a fixed 3000) |
 | `repoMapCache` | `true` (persistent per-project parse cache) |
+| `repoMapWaitMs` | `3000` (how long a prompt waits for the repo map) |
 | `backgroundCompaction` | `true` |
 | `taint` | `"ask"` (`off`): after untrusted content, outbound actions need a human ([§5](#untrusted-content-and-outbound-actions-agenttaint)) |
 | `taintJobs` | `"stop"` (`keep`): background jobs started before the run was tainted |
