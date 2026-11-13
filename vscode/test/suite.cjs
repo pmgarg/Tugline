@@ -150,7 +150,7 @@ exports.run = async function () {
   await cfg.update('webSearchProvider', 'none', vscode.ConfigurationTarget.Global);
   await cfg.update('protectedPaths', ['tests/**'], vscode.ConfigurationTarget.Global);
   await cfg.update('notifications', false, vscode.ConfigurationTarget.Global);
-  const ext = vscode.extensions.all.find((e) => e.id.endsWith('tugline'));
+  const ext = vscode.extensions.all.find((e) => e.id === 'tugline.tugline-agent' || e.id === 'tugline.tugline');
   if (!ext) throw new Error('extension not found');
   const api = await ext.activate();
   // on a scenario timeout: which sessions are blocked, and on what (a pending approval is the usual cause)
