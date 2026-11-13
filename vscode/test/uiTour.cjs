@@ -93,7 +93,7 @@ exports.run = async function () {
   git('add', '-A');
   git('commit', '-q', '-m', 'initial');
 
-  const ext = vscode.extensions.all.find((e) => e.id.endsWith('tugline'));
+  const ext = vscode.extensions.all.find((e) => e.id === 'tugline.tugline-agent' || e.id === 'tugline.tugline');
   const api = await ext.activate();
   const P = api.provider;
   const X = api.parity;
@@ -144,6 +144,15 @@ exports.run = async function () {
     // the settings page at the same width (the Marketplace listing shows it)
     await cmd('tugline.showView', 'settings');
     await shot('06b-settings', 2500);
+    // the connection in use, tested step by step on the line (the Marketplace listing shows it); the mock calls the
+    // probe's tool like a tool-capable model does
+    const prevScript = mock.script;
+    mock.set((body) => ((body.tools || []).some((t) => (t.function || t).name === 'get_weather') ? { calls: [tc('get_weather', { city: 'Dubai' })] } : { content: 'OK' }), 700);
+    P.showModelSettings('test');
+    await shot('06c-connection-test', 6000);
+    mock.script = prevScript;
+    P.showModelSettings('add');
+    await shot('06d-add-connection', 2500);
     await cmd('tugline.showView', 'chat');
     await cmd('workbench.action.closeAllEditors');
     await vscode.window.showTextDocument(vscode.Uri.file(path.join(ws, 'calc.py')));
@@ -176,7 +185,6 @@ exports.run = async function () {
       await closeQuick();
       await sleep(400);
     };
-    await pick('tugline.configure', '14-configure-endpoint');
     await pick('tugline.autoApprove', '15-auto-approve');
     await pick('workbench.action.quickOpen', '16-command-palette', '>Tugline: ');
     await vscode.window.showTextDocument(vscode.Uri.file(path.join(ws, 'calc.py')));

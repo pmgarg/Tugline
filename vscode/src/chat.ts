@@ -40,6 +40,9 @@ import { clientProfile, explicitSettings, governedConfig, ideFromSettings, locke
 import { serverModels, setupCheck, type OnboardingView } from './onboarding.js';
 import { detectOllama, effectiveContext, LOCAL_SERVERS, ollamaModelInfo, OLLAMA_SETTINGS_HINT, type LocalServer } from '../../src/core/llm/ollama.js';
 import { loginMcpServer, logoutMcpServer } from './mcpAuth.js';
+import { ConnectionStore } from './connections.js';
+import { ConnectionsController, SECRET_HEADERS } from './connectionsHost.js';
+import type { ModelInfo } from '../../src/core/llm/modelInfo.js';
 import type { SessionAction } from './agents.js';
 import { sandboxStatus } from '../../src/core/sandbox/index.js';
 import { sandboxBadge, type SandboxBadge } from './sandboxBadge.js';
@@ -126,6 +129,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   lastSandbox?: SandboxBadge & { summary: string };
   private trustAsked = new Set<string>();
   private endpointModels: string[] = [];
+  private endpointInfo = new Map<string, ModelInfo>();
+  /** saved model endpoints, switched and edited in the panel */
+  readonly connections: ConnectionsController;
   readonly notifier: Notifier;
   private sessionsChanged = new vscode.EventEmitter<void>();
   readonly onSessionsChanged = this.sessionsChanged.event;
@@ -166,6 +172,20 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       reveal: () => void vscode.commands.executeCommand('tugline.chat.focus'),
     });
     review.onDidChangePending(() => void this.postPending());
+    this.connections = new ConnectionsController({
+      secrets: ctx.secrets,
+      store: new ConnectionStore(ctx.globalState, ctx.secrets),
+      keyName: SECRET_KEY,
+      buildConfig: () => this.buildConfig(this.workspaceRoot() ?? process.cwd()),
+      post: (m) => this.post(m),
+      changed: (recheck) => {
+        for (const c of this.chats.values()) if (!c.busy) c.agentKey = '';
+        this.updateStatus();
+        this.sendStatus();
+        void this.refreshModels().then(() => (recheck ? this.checkSetup() : undefined)).catch(() => undefined);
+      },
+      log: (t) => this.log.appendLine(t),
+    });
     this.newChat();
   }
 
@@ -231,8 +251,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   async buildConfig(workspace: string): Promise<HarnessConfig> {
     const apiKey = (await this.ctx.secrets.get(SECRET_KEY)) ?? process.env.TUG_API_KEY ?? '';
+    let secretHeaders: Record<string, string> | undefined;
+    try {
+      const h = JSON.parse((await this.ctx.secrets.get(SECRET_HEADERS)) ?? '{}');
+      if (h && typeof h === 'object' && !Array.isArray(h)) secretHeaders = h;
+    } catch {
+      /* a damaged entry: no custom headers */
+    }
     // Settings the user set win over config files, and the managed policy wins over both (governance applied last).
-    const cfg = governedConfig({ workspace, get: this.settingsGet(), apiKey, vscodeTrusted: vscode.workspace.isTrusted, ide: this.ideSettings() });
+    const cfg = governedConfig({ workspace, get: this.settingsGet(), apiKey, secretHeaders, vscodeTrusted: vscode.workspace.isTrusted, ide: this.ideSettings() });
     if (cfg.trust && !cfg.trust.workspaceTrusted && cfg.trust.ignored.length && !this.trustAsked.has(workspace)) {
       this.trustAsked.add(workspace);
       void vscode.window
@@ -584,7 +611,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     let items: { value: string; label: string; group: string }[] = [];
     try {
       const cfg = a?.config ?? loadConfig({ workspace: this.workspaceRoot() ?? process.cwd(), trusted: false });
-      items = pickerItems({ ...cfg, profiles: chat.originals ?? cfg.profiles }, this.endpointModels, chat.selection.choice, vscode.workspace.getConfiguration('tugline').get<string[]>('favoriteModels', []));
+      items = pickerItems({ ...cfg, profiles: chat.originals ?? cfg.profiles }, this.endpointModels, chat.selection.choice, vscode.workspace.getConfiguration('tugline').get<string[]>('favoriteModels', []))
+        // the base profile is the active connection itself; other config-file profiles stay (advanced setups)
+        .filter((i) => i.value !== `profile:${chat.baseProfile ?? cfg.profile}`)
+        .map((i) => (i.value.startsWith('model:') ? { ...i, info: this.endpointInfo.get(i.value.slice(6)) } : i));
     } catch {
       /* config errors are shown when the agent is built */
     }
@@ -600,6 +630,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       choice: chat.selection.choice ?? '',
       effort: chat.selection.effort ?? 'default',
       voice: vscode.workspace.getConfiguration('tugline').get<boolean>('voice.enabled', false),
+      connections: this.connections.brief(),
     });
   }
 
@@ -608,9 +639,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     try {
       // the governed profile: a locked endpoint gets the key, never the settings URL
       const cfg = await this.buildConfig(this.workspaceRoot() ?? process.cwd());
-      this.endpointModels = await new LLMClient({ ...clientProfile(cfg), timeoutMs: 5000 }).listModels();
+      const infos = await new LLMClient({ ...clientProfile(cfg), timeoutMs: 5000 }).listModelInfo();
+      this.endpointModels = infos.map((i) => i.id);
+      this.endpointInfo = new Map(infos.map((i) => [i.id, i]));
     } catch {
       this.endpointModels = [];
+      this.endpointInfo.clear();
     }
     this.sendStatus();
   }
@@ -743,7 +777,18 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     switch (m.action) {
       case 'useServer': {
         if (!m.baseUrl || !/^https?:\/\//.test(m.baseUrl)) return;
-        await s.update('baseUrl', m.baseUrl, vscode.ConfigurationTarget.Global);
+        // the endpoint in use (and its key) is saved as a connection first, so switching never loses it
+        await this.connections.ensure().catch(() => undefined);
+        const known = this.connections.findByUrl(m.baseUrl);
+        // the card lists this server's models next, so no second setup check
+        if (known) await this.connections.activate(known.id, false);
+        else {
+          // the previous server's key and headers stay with its connection: they are removed before the address
+          // changes, so nothing (a model-list refresh on the change) sends them to this server
+          await this.ctx.secrets.delete(SECRET_KEY);
+          await this.ctx.secrets.delete(SECRET_HEADERS);
+          await s.update('baseUrl', m.baseUrl, vscode.ConfigurationTarget.Global);
+        }
         const fresh = clientProfile(await this.buildConfig(this.workspaceRoot() ?? process.cwd()));
         this.postOnboarding(await serverModels(fresh, { candidates: this.onboardingCandidates }));
         this.updateStatus();
@@ -752,6 +797,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case 'pickModel': {
         if (!m.model) return;
         await s.update('model', m.model, vscode.ConfigurationTarget.Global);
+        await this.connections.ensure().catch(() => undefined);
         for (const c of this.chats.values()) if (!c.busy) c.agentKey = '';
         this.updateStatus();
         this.sendStatus();
@@ -1127,7 +1173,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         if (m.file && fs.existsSync(m.file)) await vscode.window.showTextDocument(vscode.Uri.file(m.file));
         return;
       case 'createSkill': {
-        const what = await vscode.window.showInputBox({ title: 'New skill', prompt: 'What should the skill teach the agent?', ignoreFocusOut: true });
+        // the panel asks in its own input (no VS Code input box)
+        const what = String(m.text ?? '').trim().slice(0, 2000);
         if (what) await this.sendPrompt(`/skill-creator Create a project skill in .tugline/skills/ for: ${what}`);
         return;
       }
@@ -1184,119 +1231,16 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     return { type: 'settings', user: read('user'), project: read('project'), rules: { user: rules('user'), project: rules('project') }, trusted: cfg?.trust?.workspaceTrusted ?? false, hasWorkspace, endpoint, prefs };
   }
 
-  /** The settings view's model list for a base URL (and key) the user is typing, before anything is saved. */
-  private async listEndpointModels(m: any): Promise<void> {
-    const reply = (x: object) => this.post({ type: 'endpointModels', reqId: m.reqId, ...x });
-    const baseUrl = String(m.baseUrl ?? '').trim();
-    if (!/^https?:\/\/\S+$/.test(baseUrl)) return reply({ models: [], error: 'Enter a base URL starting with http:// or https://.' });
-    let apiKey = typeof m.apiKey === 'string' && m.apiKey ? m.apiKey : '';
-    try {
-      const cfg = await this.buildConfig(this.workspaceRoot() ?? process.cwd());
-      const locked = lockedFields(cfg);
-      // C4: never send the API key to a URL typed here when the organisation locked the endpoint
-      if (locked?.baseUrl && baseUrl !== locked.baseUrl) return reply({ models: [], error: 'Your organisation manages the endpoint.' });
-      // the saved key only goes to the server it was saved for: browsing providers never sends it elsewhere
-      if (!apiKey && sameOrigin(baseUrl, (clientProfile(cfg) as any).baseUrl)) apiKey = (await this.ctx.secrets.get(SECRET_KEY)) ?? '';
-    } catch (e) {
-      return reply({ models: [], error: (e as Error).message.slice(0, 400) });
-    }
-    try {
-      const ids = await new LLMClient({ name: 'settings', baseUrl, apiKey, model: '', contextWindow: 0, maxOutputTokens: 0, toolMode: 'auto', vision: false, timeoutMs: 8000 } as any).listModels(AbortSignal.timeout(15_000));
-      const coder = (id: string) => /coder|code|devstral|codestral/i.test(id);
-      const models = [...ids].sort((a, b) => Number(coder(b)) - Number(coder(a)) || a.localeCompare(b)).map((id) => ({ id, tags: [coder(id) ? 'coder' : '', /vl\b|vision|llava/i.test(id) ? 'vision' : ''].filter(Boolean) }));
-      reply({ models });
-    } catch (e) {
-      const notApi = e instanceof LLMError && e.kind === 'not_api';
-      reply({ models: [], error: (e as Error).message.slice(0, 400), ...(notApi && (e as LLMError).suggestedBaseUrl ? { suggestBaseUrl: (e as LLMError).suggestedBaseUrl } : {}) });
-    }
-  }
-
-  /** Save the endpoint from the settings view, then test it; the result goes back to the view (and the status bar). */
-  private async saveEndpoint(m: any): Promise<void> {
-    const s = vscode.workspace.getConfiguration('tugline');
-    const fail = (error: string) => this.post({ type: 'endpointResult', ok: false, error });
-    const baseUrl = String(m.baseUrl ?? '').trim();
-    if (!/^https?:\/\/\S+$/.test(baseUrl)) return fail('Enter a base URL starting with http:// or https://.');
-    try {
-      const cfg = await this.buildConfig(this.workspaceRoot() ?? process.cwd());
-      const locked = lockedFields(cfg);
-      const cur = clientProfile(cfg) as any;
-      const g = vscode.ConfigurationTarget.Global;
-      // only what the user changed is written: the effective values may come from config files (or a workspace)
-      if (!locked?.baseUrl && baseUrl !== cur.baseUrl) await s.update('baseUrl', baseUrl, g);
-      const model = String(m.model ?? '').trim();
-      if (model && !locked?.model && model !== cur.model) await s.update('model', model, g);
-      const num = (v: unknown) => (Number(v) > 0 ? Math.floor(Number(v)) : 0);
-      if (num(m.contextWindow) && num(m.contextWindow) !== cur.contextWindow) await s.update('contextWindow', num(m.contextWindow), g);
-      if (num(m.maxOutputTokens) && num(m.maxOutputTokens) !== cur.maxOutputTokens) await s.update('maxOutputTokens', num(m.maxOutputTokens), g);
-      if (['auto', 'native', 'text'].includes(m.toolMode) && m.toolMode !== (cur.toolMode ?? 'auto')) await s.update('toolMode', m.toolMode, g);
-      if (typeof m.apiKey === 'string' && m.apiKey) await this.ctx.secrets.store(SECRET_KEY, m.apiKey);
-    } catch (e) {
-      return fail((e as Error).message);
-    }
-    for (const c of this.chats.values()) if (!c.busy) c.agentKey = '';
-    await this.testEndpoint();
-    void this.refreshModels();
-  }
-
-  /** Probe the saved endpoint for the settings view (chat works? native tool calls? how fast?). */
-  private async testEndpoint(): Promise<void> {
-    let p: any = {};
-    let report: Awaited<ReturnType<typeof probeEndpoint>> | undefined;
-    try {
-      p = clientProfile(await this.buildConfig(this.workspaceRoot() ?? process.cwd()));
-      report = await probeEndpoint({ name: 'probe', contextWindow: 32768, maxOutputTokens: 1024, toolMode: 'auto', vision: false, ...p });
-    } catch (e) {
-      this.post({ type: 'endpointResult', ok: false, error: (e as Error).message });
-      return;
-    }
-    const ok = report.chatOk;
-    const error = ok ? undefined : report.errors.join(' | ') || `No reply from ${p.model} at ${p.baseUrl}.`;
-    this.updateStatus();
-    this.sendStatus();
-    const settings = await this.settingsPayloadNow();
-    this.post({ type: 'endpointResult', ok, error, report, model: p.model, settings });
-  }
-
-  private async settingsPayloadNow(): Promise<any> {
-    const ws = this.workspaceRoot();
-    const home = (this.active.agent?.config ?? (await this.buildConfig(ws ?? process.cwd()))).homeDir;
-    const read = (scope: ConfigScope) => {
-      try {
-        const f = configFile(scope, home, ws);
-        return { file: f, data: readConfigFile(f), exists: fs.existsSync(f) };
-      } catch (e) {
-        return { file: '', data: {}, exists: false, error: (e as Error).message };
-      }
-    };
-    const rules = (scope: ConfigScope) => {
-      try {
-        const f = rulesFile(scope, home, ws);
-        return { file: f, text: fs.existsSync(f) ? fs.readFileSync(f, 'utf8').slice(0, 20000) : '' };
-      } catch {
-        return { file: '', text: '' };
-      }
-    };
-    return this.settingsPayload(read, rules, !!ws);
-  }
-
-  /** Show the chat panel's settings at the model card (the "Configure endpoint" command and links). */
-  showModelSettings(): void {
-    void vscode.commands.executeCommand('tugline.chat.focus').then(() => this.post({ type: 'showView', view: 'settings', focus: 'model' }));
+  /**
+   * Show the panel's connections (the "Configure endpoint" command, the status bar and links): `add` opens the
+   * provider gallery, `edit` the active connection's form (to change its key, say), `test` tests the active one.
+   */
+  showModelSettings(focus: 'connections' | 'add' | 'edit' | 'test' = 'connections'): void {
+    void vscode.commands.executeCommand('tugline.chat.focus').then(() => this.post({ type: 'showView', view: 'settings', focus }));
   }
 
   async settingsAction(m: any): Promise<void> {
     switch (m.action) {
-      case 'endpointModels':
-        return this.listEndpointModels(m);
-      case 'saveEndpoint':
-        return this.saveEndpoint(m);
-      case 'testEndpoint':
-        return this.testEndpoint();
-      case 'clearKey':
-        await this.ctx.secrets.delete(SECRET_KEY);
-        for (const c of this.chats.values()) if (!c.busy) c.agentKey = '';
-        return this.postSettings();
       case 'pref': {
         const allowed: Record<string, (v: unknown) => boolean> = { permissionMode: (v) => isPermissionMode(v as string), notifications: (v) => typeof v === 'boolean', visibleTerminal: (v) => typeof v === 'boolean' };
         if (typeof m.key !== 'string' || !Object.hasOwn(allowed, m.key) || !allowed[m.key](m.value)) return;
@@ -1433,7 +1377,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         await this.onboardAction(m);
         return;
       case 'configure':
-        this.post({ type: 'showView', view: 'settings', focus: 'model' });
+        this.post({ type: 'showView', view: 'settings', focus: 'connections' });
         return;
       case 'copy':
         if (typeof m.text === 'string') await vscode.env.clipboard.writeText(m.text);
@@ -1465,6 +1409,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case 'settings':
         if (m.action === 'load') await this.postSettings();
         else await this.settingsAction(m);
+        return;
+      case 'conn':
+        await this.connections.handle(m);
         return;
       case 'emergencyStop':
         await vscode.commands.executeCommand('tugline.emergencyStop');

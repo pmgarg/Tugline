@@ -34,7 +34,7 @@
             <div class="chips">
               <button class="chip" id="addctx" title="Add context: files, problems, terminal output, a URL (@)" aria-label="Add context">${ic('mention')}</button>
               <button class="chip" id="modeBtn" data-menu="mode" aria-haspopup="menu" title="Permission mode: how much the agent may do without asking"><span class="mdot"></span><span class="lbl">Ask first</span>${ic('chevron-down')}</button>
-              <button class="chip" id="modelBtn" data-menu="model" aria-haspopup="menu" title="Model for this chat">${ic('sparkle')}<span class="lbl"></span>${ic('chevron-down')}</button>
+              <button class="chip" id="modelBtn" data-menu="model" aria-haspopup="menu" title="Model for this chat"><span class="lglyph none" aria-hidden="true"><i></i><b></b><i></i></span><span class="lbl"></span>${ic('chevron-down')}</button>
               <button class="chip" id="effortBtn" data-menu="effort" aria-haspopup="menu" title="Reasoning effort (for models that think)">${ic('lightbulb')}<span class="lbl">Auto</span>${ic('chevron-down')}</button>
             </div>
             <div class="acts">
@@ -85,18 +85,35 @@
   }
   const cur = () => chatState(active);
 
-  // An empty chat invites a first task: three starters fill the composer (they never send on their own).
+  // An empty chat opens on the line to the model (the brand's mark, live): what the agent runs on, and whether it
+  // answers. Three starters fill the composer (they never send on their own).
   function emptyHtml() {
     const starters = [
       ['beaker', 'Fix the failing tests', 'Run the tests, find why they fail and fix the code. Do not change the tests.'],
       ['book', 'Explain the current file', 'Explain what the current file does, how it fits into the project, and anything risky in it.'],
       ['list-ordered', 'Plan a change first', 'Make a plan for this change before editing anything: '],
     ];
-    return `<div class="empty"><div class="logo">${ic('sparkle')}</div><h2>What should we work on?</h2>
-      <p class="lede">Tugline reads your code, edits files, runs commands in a sandbox and checks its work with your project's tests, on the model you choose.</p>
+    return `<div class="empty"><div class="hero"><div class="heroline none" aria-hidden="true"><span class="hend">${ic('code')}</span><span class="rope"><i></i></span><span class="hend far">${ic('server-environment')}</span></div>
+      <div class="herocap"><span class="hmodel">No model yet</span><span class="hhost"></span><a href="#" data-act="cfg" class="hchange">Change</a></div></div>
+      <h2>What should we work on?</h2>
+      <p class="lede">Tugline reads your code, edits files, runs commands in a sandbox and checks its work with your project's tests.</p>
       <div class="starters">${starters.map(([i, t, prompt]) => `<button class="starter" data-prompt="${esc(prompt)}">${ic(i)}<span>${esc(t)}</span></button>`).join('')}</div>
-      <p class="hint">Type <kbd>@</kbd> to add files, problems or terminal output, and <kbd>/</kbd> for commands. Select code and press <kbd>Ctrl+Alt+K</kbd> to edit it inline.</p>
-      <p class="hint"><a href="#" data-act="cfg">Model and API key</a><span class="sep"></span><a href="#" data-act="test">Test connection</a></p></div>`;
+      <p class="hint">Type <kbd>@</kbd> to add files, problems or terminal output, and <kbd>/</kbd> for commands. Select code and press <kbd>Ctrl+Alt+K</kbd> to edit it inline.</p></div>`;
+  }
+  /** The welcome screen's line: the active connection's model and server, and how its last test went. */
+  function renderHero() {
+    const act = (picker.connections || []).find((c) => c.active);
+    const t = act?.lastTest;
+    const st = !act && !picker.model ? 'none' : !t ? 'idle' : !t.ok ? 'fail' : t.tools === 'text' ? 'warn' : 'ok';
+    const words = { none: 'Add a connection to start', idle: 'Not tested yet', fail: "Didn't answer the last test", warn: 'Works, with the text tool protocol', ok: 'Connected' };
+    document.querySelectorAll('.empty .hero').forEach((h) => {
+      h.querySelector('.heroline').className = `heroline ${st}`;
+      h.querySelector('.hmodel').textContent = act ? shortModel(act.model) : shortModel(picker.model) || 'No model yet';
+      h.querySelector('.hhost').textContent = act ? `${act.name === act.host ? '' : act.name + ', '}${act.host}. ${words[st]}` : words[st];
+      const a = h.querySelector('.hchange');
+      a.dataset.act = act || picker.model ? 'cfg' : 'add';
+      a.textContent = act || picker.model ? 'Change' : 'Add a connection';
+    });
   }
 
   let saveTimer;
@@ -204,13 +221,13 @@
     for (const s of ['chat', 'checkpoints', 'manage', 'settings']) $('view-' + s).classList.toggle('hidden', s !== v);
     if (v === 'checkpoints') vscode.postMessage({ type: 'checkpoints', action: 'list' });
     if (v === 'manage') vscode.postMessage({ type: 'manage', action: 'load' });
-    if (v === 'settings') vscode.postMessage({ type: 'settings', action: 'load' });
+    if (v === 'settings') {
+      settingsSkeleton();
+      vscode.postMessage({ type: 'settings', action: 'load' });
+      vscode.postMessage({ type: 'conn', action: 'load' });
+    }
   }
   document.querySelectorAll('nav.views button[data-view]').forEach((b) => (b.onclick = () => showView(b.dataset.view)));
-  function openModelSettings() {
-    state.focusModel = true;
-    showView('settings');
-  }
 
   // ------------------------------------------------------------ composer
 
@@ -285,7 +302,7 @@
     { value: 'high', label: 'High', desc: 'Most thinking: slowest' },
   ];
   const shortModel = (id) => String(id || '').split('/').pop();
-  const picker = { model: '', baseUrl: '', choice: '', items: [], effort: 'default' };
+  const picker = { model: '', baseUrl: '', choice: '', items: [], effort: 'default', connections: [] };
   function setModeLabel(m) {
     const mo = MODES.find((x) => x.value === m) || MODES[0];
     $('modeBtn').querySelector('.lbl').textContent = mo.label;
@@ -294,7 +311,10 @@
   function setModelLabel() {
     const cur = picker.items.find((i) => i.value === picker.choice);
     $('modelBtn').querySelector('.lbl').textContent = cur ? cur.label : shortModel(picker.model) || 'Choose a model';
-    $('modelBtn').title = `Model for this chat: ${picker.model || 'none'}${picker.baseUrl ? ` @ ${picker.baseUrl}` : ''}`;
+    const act = picker.connections.find((c) => c.active);
+    const t = act?.lastTest;
+    $('modelBtn').querySelector('.lglyph').className = `lglyph ${!t ? 'idle' : !t.ok ? 'fail' : t.tools === 'text' ? 'warn' : 'ok'}`;
+    $('modelBtn').title = `Model for this chat: ${picker.model || 'none'}${act ? `, on ${act.name}` : picker.baseUrl ? ` at ${picker.baseUrl}` : ''}. Click to switch the model or the connection.`;
   }
   function setEffortLabel() {
     const e = EFFORTS.find((x) => x.value === picker.effort) || EFFORTS[0];
@@ -311,9 +331,14 @@
     if (kind === 'mode') return MODES.map((m) => ({ ...m, on: m.value === state.mode }));
     if (kind === 'effort') return EFFORTS.map((e) => ({ ...e, on: e.value === picker.effort }));
     const f = menu.filter.toLowerCase();
-    const base = [{ value: '', label: shortModel(picker.model) || 'Default model', desc: `${picker.model || ''} (from settings)`, group: 'Default', on: !picker.choice }];
-    const rest = picker.items.map((i) => ({ value: i.value, label: i.label, desc: i.detail || '', group: i.group === 'profiles' ? 'Profiles' : 'Models on the endpoint', on: i.value === picker.choice }));
-    return [...base, ...rest].filter((i) => !f || i.label.toLowerCase().includes(f) || String(i.value).toLowerCase().includes(f));
+    const act = picker.connections.find((c) => c.active);
+    const here = `Models on ${act ? act.name : 'this server'}`;
+    const conns = picker.connections.map((c) => ({ kind: 'conn', value: c.id, label: c.name, desc: `${c.model} on ${c.host}`, provider: c.provider, lastTest: c.lastTest, group: 'Connections', on: c.active }));
+    const info = (id) => (picker.items.find((i) => i.value === `model:${id}`) || {}).info;
+    const base = [{ value: '', label: shortModel(picker.model) || 'Default model', full: picker.model, desc: "The connection's model", info: info(picker.model), group: here, on: !picker.choice }];
+    const models = picker.items.filter((i) => i.group !== 'profiles' && i.value !== `model:${picker.model}`).map((i) => ({ value: i.value, label: i.label, info: i.info, group: here, on: i.value === picker.choice }));
+    const profiles = picker.items.filter((i) => i.group === 'profiles').map((i) => ({ value: i.value, label: i.label, desc: 'From your config file', group: 'Config profiles', on: i.value === picker.choice }));
+    return [...conns, ...base, ...models, ...profiles].filter((i) => !f || i.label.toLowerCase().includes(f) || String(i.desc || '').toLowerCase().includes(f) || String(i.full || i.value).toLowerCase().includes(f));
   }
   function renderMenu() {
     const kind = menu.kind;
@@ -321,10 +346,12 @@
     let group = '';
     const rows = menu.items.map((it, i) => {
       const g = it.group && it.group !== group ? `<div class="mg">${esc((group = it.group))}</div>` : '';
-      return `${g}<div class="mi ${i === menu.sel ? 'cur' : ''} ${it.on ? 'on' : ''}" role="menuitemradio" aria-checked="${!!it.on}" data-i="${i}" data-value="${esc(it.value)}">${it.icon ? ic(it.icon) : ''}<span class="mt"><span class="ml">${esc(it.label)}</span>${it.desc ? `<span class="md">${esc(it.desc)}</span>` : ''}</span>${it.on ? ic('check') : ''}</div>`;
+      const lead = it.kind === 'conn' ? mark(it.provider) : it.icon ? ic(it.icon) : '';
+      const tail = it.kind === 'conn' ? testDot(it.lastTest) : it.info ? `<span class="mbadges">${it.info.contextWindow ? `<span class="badge">${tok(it.info.contextWindow)}</span>` : ''}${it.info.tools === false ? '<span class="badge warn">no tools</span>' : ''}</span>` : '';
+      return `${g}<div class="mi ${it.kind === 'conn' ? 'conn' : ''} ${i === menu.sel ? 'cur' : ''} ${it.on ? 'on' : ''}" role="menuitemradio" aria-checked="${!!it.on}" data-i="${i}" data-value="${esc(it.value)}">${lead}<span class="mt"><span class="ml">${esc(it.label)}</span>${it.desc ? `<span class="md">${esc(it.desc)}</span>` : ''}</span>${tail}${it.on ? ic('check') : ''}</div>`;
     });
-    const search = kind === 'model' ? `<div class="msearch">${ic('search')}<input id="menuFilter" placeholder="Filter models" value="${esc(menu.filter)}" aria-label="Filter models"></div>` : '';
-    const foot = kind === 'model' ? `<div class="mfoot"><a href="#" data-act="settings">${ic('settings-gear')}Manage models and endpoint…</a></div>` : '';
+    const search = kind === 'model' ? `<div class="msearch">${ic('search')}<input id="menuFilter" placeholder="Search models and connections" value="${esc(menu.filter)}" aria-label="Search models and connections"></div>` : '';
+    const foot = kind === 'model' ? `<div class="mfoot"><a href="#" data-act="addconn">${ic('add')}Add a connection</a><a href="#" data-act="settings">${ic('settings-gear')}Manage</a></div>` : '';
     menu.el.innerHTML = `${search}<div class="mlist">${rows.join('') || '<div class="hint mempty">No model matches.</div>'}</div>${foot}`;
     const fi = $('menuFilter');
     if (fi) {
@@ -346,7 +373,7 @@
     anchor.setAttribute('aria-expanded', 'true');
     // above the composer, aligned with the chip (clamped to the panel)
     const r = anchor.getBoundingClientRect();
-    const w = Math.min(300, window.innerWidth - 16);
+    const w = Math.min(kind === 'model' ? 340 : 300, window.innerWidth - 16);
     menu.el.style.width = `${w}px`;
     menu.el.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - w - 8))}px`;
     menu.el.style.bottom = `${window.innerHeight - r.top + 6}px`;
@@ -371,6 +398,8 @@
       picker.effort = it.value;
       setEffortLabel();
       vscode.postMessage({ type: 'setEffort', chatId: active, effort: it.value });
+    } else if (it.kind === 'conn') {
+      if (!it.on) vscode.postMessage({ type: 'conn', action: 'use', id: it.value });
     } else {
       picker.choice = it.value;
       setModelLabel();
@@ -400,11 +429,11 @@
       e.preventDefault();
       chooseMenu(Number(mi.dataset.i));
     }
-    const a = e.target.closest('[data-act="settings"]');
+    const a = e.target.closest('[data-act="settings"], [data-act="addconn"]');
     if (a) {
       e.preventDefault();
       closeMenu();
-      showView('settings');
+      openModelSettings(a.dataset.act === 'addconn' ? 'add' : 'connections');
     }
   });
   document.querySelectorAll('.chip[data-menu]').forEach((b) => (b.onclick = (e) => { e.stopPropagation(); openMenu(b.dataset.menu, b); }));
@@ -563,8 +592,9 @@
   // Log clicks: open files, expand tools, edit-and-resubmit (B7).
   $('logs').addEventListener('click', (e) => {
     const t = e.target;
-    if (t.closest('[data-act="cfg"]')) return (e.preventDefault(), openModelSettings());
-    if (t.closest('[data-act="test"]')) return (e.preventDefault(), vscode.postMessage({ type: 'testConnection' }));
+    if (t.closest('[data-act="cfg"]')) return (e.preventDefault(), openModelSettings('connections'));
+    if (t.closest('[data-act="test"]')) return (e.preventDefault(), openModelSettings('test'));
+    if (t.closest('[data-act="add"]')) return (e.preventDefault(), openModelSettings('add'));
     if (t.matches('code.inline') && /[./]/.test(t.dataset.path || '')) vscode.postMessage({ type: 'openFile', path: t.dataset.path.replace(/:\d+.*$/, '') });
     const th = t.closest('.tool .head');
     if (th) th.parentElement.classList.toggle('open');
@@ -717,7 +747,7 @@
         : `<div class="hint">No chat model is installed${v.ollama ? ' in Ollama. Pull one in a terminal, e.g. <code class="inline">ollama pull qwen2.5-coder:7b</code>, then click Retry' : ''}.</div>`;
       if (v.ollama) body += `<div class="hint">The context window is read from Ollama automatically.</div>`;
     }
-    const d = add(cid, 'perm onboard', `<div class="ptitle">${ic('plug')}<span>${title}</span></div>${body}<div class="row"><button class="secondary" data-ob="retry">Retry</button><button class="secondary" data-ob="configure">Other endpoint…</button><span class="spacer"></span><button class="secondary" data-ob="dismiss">Dismiss</button></div><div class="obs hint"></div>`);
+    const d = add(cid, 'perm onboard', `<div class="ptitle">${ic('plug')}<span>${title}</span></div>${body}<div class="row"><button class="secondary" data-ob="retry">Retry</button><button class="secondary" data-ob="configure">Add a connection</button><span class="spacer"></span><button class="secondary" data-ob="dismiss">Dismiss</button></div><div class="obs hint"></div>`);
     d.dataset.state = v.state;
   }
   // delegated, so the card's buttons work however it was (re)rendered
@@ -726,7 +756,7 @@
     if (!b) return;
     const card = b.closest('.msg.onboard');
     const action = b.dataset.ob;
-    if (action === 'configure') openModelSettings();
+    if (action === 'configure') openModelSettings('add');
     else vscode.postMessage({ type: 'onboard', action, baseUrl: b.dataset.url, model: b.dataset.model });
     if (action === 'pickModel' || action === 'useServer') {
       card.querySelectorAll('button').forEach((x) => (x.disabled = true));
@@ -809,7 +839,8 @@
     el.innerHTML = `<h3>MCP servers</h3>${m.trusted ? '' : '<p class="hint">This workspace is not trusted: project servers (.mcp.json, .tugline/config.json) do not start.</p>'}${servers}
       <div class="row"><input id="regq" placeholder="search the MCP registry"><button class="secondary" id="regsearch">Search</button></div><div id="reg">${reg}</div>
       <details><summary>Add a server by hand</summary><div class="row"><input id="addname" placeholder="name"><input id="addcmd" placeholder="command (stdio) or https:// URL" class="grow"><button id="addsrv">Add</button></div></details>
-      <h3>Skills</h3>${skills}<div class="row"><button class="secondary" id="newskill">New skill…</button></div>`;
+      <h3>Skills</h3>${skills}<div class="row"><button class="secondary" id="newskill">${ic('add')}New skill</button></div>
+      <div class="newskill hidden" id="newskillBox"><label for="newskillText">What should the skill teach the agent?</label><textarea id="newskillText" rows="2" placeholder="For example: how we write database migrations in this project"></textarea><div class="row"><button id="newskillGo">Create the skill</button><button class="secondary" id="newskillCancel">Cancel</button></div></div>`;
     el.querySelector('#regsearch').onclick = () => vscode.postMessage({ type: 'manage', action: 'searchRegistry', query: el.querySelector('#regq').value });
     el.querySelector('#addsrv').onclick = () => {
       const name = el.querySelector('#addname').value.trim();
@@ -818,7 +849,18 @@
       const config = /^https?:\/\//.test(cmd) ? { url: cmd } : { command: cmd.split(/\s+/)[0], args: cmd.split(/\s+/).slice(1) };
       vscode.postMessage({ type: 'manage', action: 'addServer', name, config });
     };
-    el.querySelector('#newskill').onclick = () => vscode.postMessage({ type: 'manage', action: 'createSkill' });
+    el.querySelector('#newskill').onclick = () => {
+      el.querySelector('#newskillBox').classList.remove('hidden');
+      el.querySelector('#newskillText').focus();
+    };
+    el.querySelector('#newskillCancel').onclick = () => el.querySelector('#newskillBox').classList.add('hidden');
+    el.querySelector('#newskillGo').onclick = () => {
+      const text = el.querySelector('#newskillText').value.trim();
+      if (!text) return el.querySelector('#newskillText').focus();
+      vscode.postMessage({ type: 'manage', action: 'createSkill', text });
+      el.querySelector('#newskillBox').classList.add('hidden');
+      showView('chat');
+    };
     el.querySelectorAll('[data-reg]').forEach((b) => (b.onclick = () => {
       const r = m.registry[Number(b.dataset.reg)];
       vscode.postMessage({ type: 'manage', action: 'addServer', registryName: r.name, config: r.config });
@@ -838,207 +880,688 @@
     else vscode.postMessage({ type: 'manage', action: a.dataset.a, name: a.closest('[data-name]')?.dataset.name });
   });
 
-  // ------------------------------------------------------------ settings (B12)
+  // ------------------------------------------------------------ settings: connections, behaviour, safety
 
   let settingsScope = 'user';
   let settingsData = null;
-  // the model card's working state survives re-renders (a settings reload must not wipe what the user typed)
-  const ep = { baseUrl: '', apiKey: '', model: '', ctx: '', maxOut: '', toolMode: 'auto', models: [], modelsFor: '', modelsNote: '', loading: false, result: null, busy: false, dirty: false, req: 0 };
-  const PRESETS = [
-    { id: 'ollama', label: 'Ollama (this computer)', url: 'http://localhost:11434/v1', key: false },
-    { id: 'lmstudio', label: 'LM Studio (this computer)', url: 'http://localhost:1234/v1', key: false },
-    { id: 'llamacpp', label: 'llama.cpp server (this computer)', url: 'http://localhost:8080/v1', key: false },
-    { id: 'company', label: "Company server (vLLM, SGLang, Open WebUI, a gateway)", url: '', key: true },
-    { id: 'openai', label: 'OpenAI', url: 'https://api.openai.com/v1', key: true },
-    { id: 'openrouter', label: 'OpenRouter', url: 'https://openrouter.ai/api/v1', key: true },
-    { id: 'deepseek', label: 'DeepSeek', url: 'https://api.deepseek.com/v1', key: true },
+  const TABS = [
+    { id: 'connections', label: 'Connections', icon: 'plug' },
+    { id: 'behaviour', label: 'Behaviour', icon: 'settings' },
+    { id: 'safety', label: 'Safety', icon: 'shield' },
   ];
-  const presetOf = (url) => PRESETS.find((p) => p.url && p.url === url)?.id || 'company';
+  state.stab = 'connections';
 
-  function loadModels(force) {
-    const url = ep.baseUrl.trim();
-    if (!/^https?:\/\/\S+$/.test(url)) return;
-    if (!force && ep.modelsFor === url + '|' + ep.apiKey) return;
-    ep.modelsFor = url + '|' + ep.apiKey;
-    ep.loading = true;
-    ep.req++;
-    vscode.postMessage({ type: 'settings', action: 'endpointModels', reqId: ep.req, baseUrl: url, apiKey: ep.apiKey || undefined });
+  // token sizes offered as one-click choices (the same lists as src/core/llm/modelInfo.ts)
+  const CTX_SIZES = [8192, 16384, 32768, 65536, 131072, 200000, 262144, 1048576];
+  const OUT_SIZES = [4096, 8192, 16384, 32768, 65536];
+  const tok = (n) => (n >= 1000000 ? `${+(n / 1048576).toFixed(n % 1048576 ? 1 : 0)}M` : n >= 1000 ? (n % 1024 === 0 ? `${n / 1024}K` : `${Math.round(n / 1000)}K`) : String(n));
+  const STEPS = [
+    { id: 'server', label: 'Server' },
+    { id: 'model', label: 'Model' },
+    { id: 'chat', label: 'Chat' },
+    { id: 'tools', label: 'Tools' },
+  ];
+
+  // the connection manager's working state survives re-renders (a reload must never wipe what the user typed)
+  const conn = { list: [], providers: [], locked: {}, local: null, view: 'list', d: null, models: [], modelsFor: '', modelsReq: 0, modelsLoading: false, modelsErr: '', suggest: '', ollama: false, listOpen: false, test: null, testReq: 0, saving: false, msg: null, loaded: false };
+
+  const provider = (id) => conn.providers.find((p) => p.id === id) || conn.providers.find((p) => p.id === 'custom') || { id: 'custom', name: 'Custom URL', mark: '+', blurb: '' };
+  const mark = (pid, big) => `<span class="pmark p-${esc(pid)}${big ? ' big' : ''}" aria-hidden="true">${esc(provider(pid).mark)}</span>`;
+  const testDot = (t) => {
+    if (!t) return `<span class="tdot none" title="Not tested yet"></span>`;
+    const cls = !t.ok ? 'fail' : t.tools === 'text' ? 'warn' : 'ok';
+    const when = new Date(t.at).toLocaleString();
+    const what = !t.ok ? `Failed: ${t.error || 'no tool calls'}` : t.tools === 'text' ? 'Works (text tool protocol)' : 'Works (native tool calls)';
+    return `<span class="tdot ${cls}" title="${esc(`${what}. Tested ${when}`)}"></span>`;
+  };
+
+  function settingsSkeleton() {
+    const el = $('settings');
+    if (el.querySelector('.settings')) return;
+    el.innerHTML = `<div class="settings">
+      <nav class="stabs" role="tablist" aria-label="Settings">${TABS.map((t) => `<button role="tab" class="stab" data-stab="${t.id}" aria-selected="false">${ic(t.icon)}<span>${t.label}</span></button>`).join('')}</nav>
+      <div class="stab-pane" id="stab-connections" role="tabpanel"></div>
+      <div class="stab-pane hidden" id="stab-behaviour" role="tabpanel"></div>
+      <div class="stab-pane hidden" id="stab-safety" role="tabpanel"></div>
+    </div>`;
+    el.querySelector('.stabs').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-stab]');
+      if (b) showTab(b.dataset.stab);
+    });
+    bindConnections(el.querySelector('#stab-connections'));
+  }
+  function showTab(id) {
+    state.stab = id;
+    document.querySelectorAll('.stab').forEach((b) => {
+      b.classList.toggle('on', b.dataset.stab === id);
+      b.setAttribute('aria-selected', String(b.dataset.stab === id));
+    });
+    for (const t of TABS) $('stab-' + t.id)?.classList.toggle('hidden', t.id !== id);
+  }
+
+  /** Open the settings at a connection screen: the list, the gallery, the active one's form, or its test. */
+  function openModelSettings(focus) {
+    state.connFocus = focus || 'connections';
+    showView('settings');
+    applyConnFocus();
+  }
+  function applyConnFocus() {
+    const f = state.connFocus;
+    if (!f || !conn.loaded) return;
+    state.connFocus = '';
+    showTab('connections');
+    const act = conn.list.find((c) => c.active);
+    if (f === 'add') openGallery();
+    else if ((f === 'edit' || f === 'test') && act) {
+      openForm(act);
+      if (f === 'test') runTest();
+    } else if (!conn.list.length) openGallery();
+    else {
+      conn.view = 'list';
+      renderConnections();
+    }
+  }
+
+  // ---- the list
+
+  function renderConnections() {
+    const pane = $('stab-connections');
+    if (!pane) return;
+    // a new screen (list, gallery, form) starts at the top
+    if (conn.shown !== conn.view) {
+      conn.shown = conn.view;
+      $('settings').scrollTop = 0;
+    }
+    if (conn.view === 'gallery') return renderGallery(pane);
+    if (conn.view === 'form') return renderForm(pane);
+    const locked = conn.locked || {};
+    const rows = conn.list.map((c) => `<li class="crow ${c.active ? 'on' : ''}" data-id="${esc(c.id)}">
+        ${mark(c.provider)}
+        <div class="cmain"><div class="cname">${esc(c.name)}${testDot(c.lastTest)}</div><div class="cmeta"><span class="mono">${esc(c.model)}</span><span>${esc(c.host)}</span>${c.contextWindow ? `<span>${tok(c.contextWindow)} context</span>` : ''}</div></div>
+        <div class="cacts">${c.active ? `<span class="inuse">${lineGlyph('ok')}In use</span>` : `<button class="secondary sm" data-c="use">Use</button>`}
+          <button class="ib" data-c="edit" title="Edit" aria-label="Edit ${esc(c.name)}">${ic('edit')}</button>
+          <button class="ib" data-c="dup" title="Duplicate" aria-label="Duplicate ${esc(c.name)}">${ic('copy')}</button>
+          ${c.active ? '' : `<button class="ib" data-c="del" title="Delete" aria-label="Delete ${esc(c.name)}">${ic('trash')}</button>`}</div>
+        <div class="cconfirm hidden">Delete ${esc(c.name)} and its saved key? <button class="danger sm" data-c="delyes">Delete</button><button class="secondary sm" data-c="delno">Keep</button></div>
+      </li>`);
+    pane.innerHTML = `<div class="phead"><div><h2>Connections</h2><p class="hint">Where your model runs. Switch between them any time from the model button under the message box.</p></div></div>
+      ${locked.baseUrl ? `<p class="caveat">${ic('lock')}<span>Your organisation manages the model endpoint${locked.model ? ` (${esc(locked.model)})` : ''}. You can change its key, but not the server.</span></p>` : ''}
+      ${conn.msg ? `<p class="${conn.msg.bad ? 'err' : 'okmsg'}">${ic(conn.msg.bad ? 'error' : 'check')}<span>${esc(conn.msg.text)}</span></p>` : ''}
+      ${conn.list.length ? `<ul class="clist">${rows.join('')}</ul>` : `<div class="cempty">${lineGlyph('none')}<p>No connection yet. Add one to start: a model on this computer, your company's server, or a hosted API.</p></div>`}
+      ${locked.baseUrl ? '' : `<button class="addconn" data-c="add">${ic('add')}<span>Add a connection</span></button>`}`;
+  }
+
+  /** The brand's small mark: two nodes on a line, coloured by the connection's state. */
+  function lineGlyph(st) {
+    return `<span class="lglyph ${st || 'none'}" aria-hidden="true"><i></i><b></b><i></i></span>`;
+  }
+
+  // ---- the gallery
+
+  function openGallery() {
+    conn.view = 'gallery';
+    conn.msg = null;
+    renderConnections();
+    vscode.postMessage({ type: 'conn', action: 'detect' });
+  }
+  function renderGallery(pane) {
+    const groups = [
+      ['local', 'On this computer', 'Free and private: the model runs on your machine.'],
+      ['company', 'Your company', 'A server on your network, a chat site or a gateway.'],
+      ['hosted', 'Hosted', 'Pay per use with an API key.'],
+    ];
+    const status = (p) => {
+      if (!p.local) return '';
+      if (!conn.local) return `<span class="lstat">${ic('loading')}Looking…</span>`;
+      const s = conn.local.find((x) => x.kind === p.id);
+      return s ? `<span class="lstat on"><span class="live"></span>Running, ${s.models} model${s.models === 1 ? '' : 's'}</span>` : `<span class="lstat">Not running</span>`;
+    };
+    pane.innerHTML = `<div class="phead"><button class="ib back" data-c="back" title="Back" aria-label="Back">${ic('arrow-left')}</button><div><h2>Add a connection</h2><p class="hint">Pick where the model runs. Everything else is filled in for you.</p></div></div>
+      ${groups.map(([g, title, sub]) => `<section class="pgroup"><h3>${title}</h3><p class="hint">${sub}</p><div class="tiles">${conn.providers.filter((p) => p.group === g).map((p) => `<button class="tile" data-p="${esc(p.id)}">${mark(p.id)}<span class="tt"><span class="tn">${esc(p.name)}</span><span class="tb">${esc(p.blurb)}</span>${status(p)}</span></button>`).join('')}</div></section>`).join('')}`;
+  }
+
+  // ---- the form
+
+  function draftFrom(c, p) {
+    const d = {
+      id: c?.id,
+      provider: c?.provider || p?.id || 'custom',
+      name: c?.name || '',
+      baseUrl: c?.baseUrl ?? p?.baseUrl ?? '',
+      apiKey: '',
+      hasKey: !!c?.hasKey,
+      clearKey: false,
+      model: c?.model || '',
+      ctxPick: 'auto',
+      ctxCustom: '',
+      outPick: 'auto',
+      outCustom: '',
+      toolMode: c?.toolMode || 'auto',
+      vision: !!c?.vision,
+      headers: (c?.headerNames || []).map((n) => ({ name: n, saved: true })),
+      headersOpen: !!(c?.headerNames || []).length,
+      savedCtx: c?.contextWindow || 0,
+      active: !!c?.active,
+    };
+    if (c?.contextWindow) [d.ctxPick, d.ctxCustom] = CTX_SIZES.includes(c.contextWindow) ? [c.contextWindow, ''] : ['custom', String(c.contextWindow)];
+    if (c?.maxOutputTokens) [d.outPick, d.outCustom] = OUT_SIZES.includes(c.maxOutputTokens) ? [c.maxOutputTokens, ''] : ['custom', String(c.maxOutputTokens)];
+    return d;
+  }
+  function openForm(c, p) {
+    conn.view = 'form';
+    conn.d = draftFrom(c, p);
+    conn.models = [];
+    conn.modelsFor = '';
+    conn.modelsErr = '';
+    conn.suggest = '';
+    conn.test = null;
+    conn.msg = null;
+    conn.listOpen = !c && !!conn.d.baseUrl;
+    renderConnections();
+    if (conn.d.baseUrl) loadModels(false);
+  }
+  const modelInfo = () => conn.models.find((m) => m.id === conn.d.model);
+  /** What Auto means for this model: the size the server reports, Ollama's own, or the default. */
+  function autoCtx() {
+    const mi = modelInfo();
+    if (conn.ollama) return { value: undefined, label: 'Auto', note: 'Ollama reports the size when the model loads; Tugline reads it then.' };
+    if (mi && mi.contextWindow) return { value: mi.contextWindow, label: `Auto (${tok(mi.contextWindow)})`, note: `The server reports ${tok(mi.contextWindow)} tokens for this model.` };
+    return { value: undefined, label: 'Auto', note: "The server doesn't report it, so Tugline assumes 32K. Pick the size if you know it." };
+  }
+  function autoOut() {
+    const mi = modelInfo();
+    if (mi && mi.maxOutput) return { value: mi.maxOutput, label: `Auto (${tok(mi.maxOutput)})` };
+    return { value: undefined, label: 'Auto' };
+  }
+  function draftPayload() {
+    const d = conn.d;
+    const ctx = d.ctxPick === 'auto' ? autoCtx().value : d.ctxPick === 'custom' ? Number(d.ctxCustom) || undefined : d.ctxPick;
+    const out = d.outPick === 'auto' ? autoOut().value : d.outPick === 'custom' ? Number(d.outCustom) || undefined : d.outPick;
+    const dr = {
+      id: d.id,
+      provider: d.provider,
+      name: d.name.trim(),
+      baseUrl: d.baseUrl.trim(),
+      apiKey: d.apiKey || undefined,
+      clearKey: d.clearKey || undefined,
+      model: d.model.trim(),
+      contextWindow: ctx,
+      maxOutputTokens: out,
+      toolMode: d.toolMode,
+      vision: d.vision,
+      headers: d.headers.filter((h) => h.name.trim()).map((h) => (h.value === undefined || (h.saved && h.value === '') ? { name: h.name.trim() } : { name: h.name.trim(), value: h.value })),
+    };
+    for (const k of Object.keys(dr)) if (dr[k] === undefined) delete dr[k];
+    return dr;
+  }
+
+  function renderForm(pane) {
+    const d = conn.d;
+    const p = provider(d.provider);
+    const locked = conn.locked || {};
+    const lockUrl = !!locked.baseUrl;
+    const keyPh = d.hasKey && !d.clearKey ? 'Saved. Type to replace it' : p.needsKey ? 'Paste your API key' : 'Leave empty if the server needs none';
+    pane.innerHTML = `<div class="phead"><button class="ib back" data-c="back" title="Back" aria-label="Back">${ic('arrow-left')}</button>${mark(d.provider, true)}<div><h2>${d.id ? esc(d.name || p.name) : esc(p.name)}</h2><p class="hint">${d.id ? (d.active ? 'In use now. Changes apply from the next message.' : 'Saved connection') : esc(p.blurb)}</p></div></div>
+      <div class="cform">
+        <div class="field"><label for="cfUrl">Base URL</label><input id="cfUrl" spellcheck="false" autocomplete="off" placeholder="${esc(p.placeholder || p.baseUrl || 'https://ai.example.com/v1')}" value="${esc(d.baseUrl)}" ${lockUrl ? 'disabled' : ''}><span class="hint">${esc(p.note || 'The OpenAI-compatible API address, usually ending in /v1.')}</span><div id="cfSuggest"></div></div>
+        <div class="field"><label for="cfKey">API key${p.needsKey ? '' : ' <span class="opt">optional</span>'}</label><div class="pw"><input id="cfKey" type="password" spellcheck="false" autocomplete="off" placeholder="${esc(keyPh)}" value="${esc(d.apiKey)}"><button class="ib" id="cfKeyShow" title="Show or hide the key" aria-label="Show or hide the key">${ic('eye')}</button></div>
+          <span class="hint">Kept in VS Code's secret storage and sent only to this server.${p.keyUrl ? ` <a href="${esc(p.keyUrl)}">Get a key</a>` : ''}${d.hasKey && !d.clearKey ? ' <button class="linkbtn" data-c="clearkey">Remove the saved key</button>' : ''}${d.clearKey ? ' The saved key will be removed when you save. <button class="linkbtn" data-c="keepkey">Keep it</button>' : ''}</span></div>
+        <div class="field"><label for="cfModel">Model</label>
+          <div class="combo"><span class="cicon">${ic('search')}</span><input id="cfModel" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="${conn.listOpen}" aria-controls="cfModels" placeholder="${d.baseUrl ? 'Search the server’s models or type a name' : 'Enter the base URL first'}" value="${esc(d.model)}" ${locked.model ? 'disabled' : ''}><button class="ib" data-c="reload" title="Load the models again" aria-label="Load the models again">${ic('refresh')}</button></div>
+          <div id="cfModels"></div></div>
+        <div class="field"><label>Context window</label><div class="chips2" id="cfCtx"></div><span class="hint" id="cfCtxNote"></span></div>
+        <details class="fmore" ${d.moreOpen ? 'open' : ''}><summary>${ic('chevron-right')}More options<span class="hint" id="cfMoreSum"></span></summary>
+          <div class="field"><label>Longest reply</label><div class="chips2" id="cfOut"></div><span class="hint">Tokens the model may write in one reply. Larger allows bigger edits.</span></div>
+          <div class="field"><label>Tool calling</label><div class="seg" id="cfTool">${[['auto', 'Auto'], ['native', 'Native'], ['text', 'Text']].map(([v, l]) => `<button class="${d.toolMode === v ? 'on' : ''}" data-v="${v}">${l}</button>`).join('')}</div><span class="hint">Auto uses native tool calls and switches to a text protocol when the server rejects them.</span></div>
+          <label class="toggle"><input type="checkbox" id="cfVision" ${d.vision ? 'checked' : ''}><span class="sw"></span>The model reads images (screenshots are shown to it)</label>
+          <div class="field"><label>Custom headers</label><div id="cfHeaders"></div><button class="linkbtn addh" data-c="addh">${ic('add')}Add a header</button><span class="hint">For gateways that want a team or project ID. Values are kept with the key, in secret storage.</span></div>
+          <div class="field"><label for="cfName">Name</label><input id="cfName" spellcheck="false" placeholder="${esc(p.baseUrl ? p.name : 'Shown in the model menu')}" value="${esc(d.name)}"></div>
+        </details>
+        <div class="tline" id="cfTest"></div>
+        <div id="cfMsg"></div>
+        <div class="formacts"><button class="secondary" data-c="test">${ic('pulse')}Test</button><span class="spacer"></span>
+          ${d.active ? `<button data-c="save" ${conn.saving ? 'disabled' : ''}>${ic('check')}Save</button>` : `${d.id ? `<button class="secondary" data-c="save" ${conn.saving ? 'disabled' : ''}>Save</button>` : ''}<button data-c="saveuse" ${conn.saving ? 'disabled' : ''}>${ic('check')}${d.id ? 'Save and use' : 'Add and use'}</button>`}</div>
+      </div>`;
     renderModelList();
+    renderSizes();
+    renderHeaders();
+    renderTest();
+    renderSuggest();
+    renderFormMsg();
+  }
+
+  function renderSuggest() {
+    const el = $('cfSuggest');
+    if (!el) return;
+    el.innerHTML = conn.suggest ? `<button class="suggest" data-c="usesuggest">${ic('lightbulb')}<span>The API is at <b>${esc(conn.suggest)}</b>. Use it</span></button>` : '';
+  }
+  function renderFormMsg() {
+    const el = $('cfMsg');
+    if (!el) return;
+    el.innerHTML = conn.msg ? `<p class="${conn.msg.bad ? 'err' : 'okmsg'}">${ic(conn.msg.bad ? 'error' : 'info')}<span>${esc(conn.msg.text)}</span></p>` : '';
+  }
+
+  function sortModels(list) {
+    const rank = (m) => (m.tools === false ? 2 : 0) + (m.coder ? 0 : 1);
+    return [...list].sort((a, b) => rank(a) - rank(b) || a.id.localeCompare(b.id));
   }
   function renderModelList() {
-    const el = $('epModels');
+    const el = $('cfModels');
     if (!el) return;
-    if (ep.loading) return (el.innerHTML = `<div class="hint">${ic('loading')} Loading models…</div>`);
-    // filter only while the user types in the model box; a saved model name does not hide the list
-    const f = ep.typing ? ep.model.trim().toLowerCase() : '';
-    const list = ep.models.filter((m) => !f || m.id.toLowerCase().includes(f) || m.id === ep.model);
-    const sug = ep.suggest ? `<div class="obl"><button class="secondary" data-ep="useSuggest" title="${esc(ep.suggest)}">${ic('arrow-right')}Use ${esc(ep.suggest)}</button></div>` : '';
-    el.innerHTML = (ep.modelsNote ? `<div class="${ep.modelsErr ? 'err' : 'hint'}">${esc(ep.modelsNote)}</div>${sug}` : '') +
-      (list.length ? `<div class="mlist pick">${list.slice(0, 200).map((m) => `<div class="mi ${m.id === ep.model ? 'on' : ''}" data-model="${esc(m.id)}"><span class="mt"><span class="ml">${esc(m.id)}</span></span>${(m.tags || []).map((t) => `<span class="badge">${esc(t)}</span>`).join('')}${m.id === ep.model ? ic('check') : ''}</div>`).join('')}</div>` : '');
+    const d = conn.d;
+    if (conn.modelsLoading) return (el.innerHTML = `<div class="mstate">${ic('loading')}Loading the server's models…</div>`);
+    if (conn.modelsErr) return (el.innerHTML = `<div class="mstate bad">${ic('error')}<span>${esc(conn.modelsErr)}</span></div>`);
+    const mi = modelInfo();
+    const chosen = d.model && !conn.listOpen ? `<div class="mchosen">${mi ? modelBadges(mi) : conn.models.length ? '<span class="badge warn">not in the server’s list</span>' : ''}</div>` : '';
+    if (!conn.listOpen || !conn.models.length) return (el.innerHTML = chosen + (conn.models.length && !d.model ? `<div class="mstate">${conn.models.length} models on this server. Click the box to choose.</div>` : ''));
+    const f = d.typing ? d.model.trim().toLowerCase() : '';
+    const list = sortModels(conn.models).filter((m) => !f || m.id.toLowerCase().includes(f));
+    el.innerHTML = `<div class="mpick" id="cfList" role="listbox">${list.slice(0, 300).map((m) => `<div class="mo ${m.id === d.model ? 'on' : ''}" role="option" aria-selected="${m.id === d.model}" data-model="${esc(m.id)}"><span class="mid">${esc(m.id)}</span>${modelBadges(m)}</div>`).join('') || `<div class="mstate">No model matches. Press Enter to use “${esc(d.model)}”.</div>`}</div><div class="mcount hint">${list.length} of ${conn.models.length} models</div>`;
   }
-  function epResultHtml() {
-    const r = ep.result;
-    if (!r) return '';
-    if (r.busy) return `<div class="epres busy">${ic('loading')}<span>${esc(r.text)}</span></div>`;
-    if (!r.ok) return `<div class="epres bad">${ic('error')}<span>${esc(r.error || 'The connection failed.')}</span></div>`;
-    const rep = r.report || {};
-    const yn = (ok, t) => `<span class="${ok ? 'add' : 'rem'}">${ic(ok ? 'check' : 'close')}${t}</span>`;
-    const tools = rep.nativeTools ? yn(true, 'native tool calls') : rep.textTools ? yn(true, 'text tool protocol') : yn(false, 'tool calls');
-    const speed = rep.latencyMs ? `${(rep.latencyMs / 1000).toFixed(1)} s for a short reply${rep.tokensPerSecond ? ` · ~${rep.tokensPerSecond} tok/s` : ''}` : '';
-    return `<div class="epres ok">${ic('pass-filled')}<span><b>Connected to ${esc(r.model || '')}</b><br>${yn(rep.chatOk, 'chat')} ${tools}${speed ? `<br><span class="hint">${esc(speed)}</span>` : ''}${(rep.errors || []).length ? `<br><span class="hint">${esc(rep.errors.join(' | '))}</span>` : ''}</span></div>`;
+  function modelBadges(m) {
+    return [m.contextWindow ? `<span class="badge">${tok(m.contextWindow)}</span>` : '', m.tools === true ? '<span class="badge good">tools</span>' : m.tools === false ? '<span class="badge warn">no tools</span>' : '', m.vision ? '<span class="badge">images</span>' : '', m.coder ? '<span class="badge">coder</span>' : ''].join('');
   }
-  function renderSettings() {
-    const s = settingsData;
-    const el = $('settings');
-    if (!s) return;
-    const e = s.endpoint || {};
-    if (!ep.dirty) {
-      ep.baseUrl = e.baseUrl || '';
-      ep.model = e.model || '';
-      ep.ctx = e.contextWindow ? String(e.contextWindow) : '';
-      ep.maxOut = e.maxOutputTokens ? String(e.maxOutputTokens) : '';
-      ep.toolMode = e.toolMode || 'auto';
+
+  function renderSizes() {
+    const d = conn.d;
+    const ctx = $('cfCtx');
+    if (!ctx) return;
+    const a = autoCtx();
+    ctx.innerHTML = [`<button class="${d.ctxPick === 'auto' ? 'on' : ''}" data-ctx="auto">${esc(a.label)}</button>`, ...CTX_SIZES.map((n) => `<button class="${d.ctxPick === n ? 'on' : ''}" data-ctx="${n}">${tok(n)}</button>`), `<button class="${d.ctxPick === 'custom' ? 'on' : ''}" data-ctx="custom">Custom</button>`].join('') +
+      (d.ctxPick === 'custom' ? `<span class="custom"><input id="cfCtxCustom" type="number" min="1024" step="1024" placeholder="e.g. 98304" value="${esc(d.ctxCustom)}" aria-label="Context window in tokens"><span class="hint">tokens</span></span>` : '');
+    $('cfCtxNote').textContent = d.ctxPick === 'auto' ? a.note : 'The most the model can read at once: your files, the conversation and tool results. Tugline summarises older messages before it fills up.';
+    const o = autoOut();
+    $('cfOut').innerHTML = [`<button class="${d.outPick === 'auto' ? 'on' : ''}" data-out="auto">${esc(o.label)}</button>`, ...OUT_SIZES.map((n) => `<button class="${d.outPick === n ? 'on' : ''}" data-out="${n}">${tok(n)}</button>`), `<button class="${d.outPick === 'custom' ? 'on' : ''}" data-out="custom">Custom</button>`].join('') +
+      (d.outPick === 'custom' ? `<span class="custom"><input id="cfOutCustom" type="number" min="256" step="256" placeholder="e.g. 12000" value="${esc(d.outCustom)}" aria-label="Longest reply in tokens"><span class="hint">tokens</span></span>` : '');
+    const sum = [d.outPick !== 'auto' ? `reply ${d.outPick === 'custom' ? tok(Number(d.outCustom) || 0) : tok(d.outPick)}` : '', d.toolMode !== 'auto' ? `${d.toolMode} tools` : '', d.vision ? 'images' : '', d.headers.length ? `${d.headers.length} header${d.headers.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(', ');
+    $('cfMoreSum').textContent = sum;
+  }
+
+  function renderHeaders() {
+    const el = $('cfHeaders');
+    if (!el) return;
+    el.innerHTML = conn.d.headers.map((h, i) => `<div class="hrow" data-h="${i}"><input class="hn" placeholder="Header name" spellcheck="false" value="${esc(h.name)}" aria-label="Header name"><input class="hv" type="password" placeholder="${h.saved ? 'Saved. Type to replace' : 'Value'}" spellcheck="false" autocomplete="off" value="${esc(h.value || '')}" aria-label="Header value"><button class="ib" data-c="rmh" title="Remove" aria-label="Remove header">${ic('close')}</button></div>`).join('');
+  }
+
+  // ---- the test line: the editor at one end, the model at the other, a node for each step in between
+
+  function renderTest() {
+    const el = $('cfTest');
+    if (!el) return;
+    const t = conn.test;
+    if (!t) return (el.innerHTML = '', el.className = 'tline');
+    const st = (id) => t.steps[id] || {};
+    const failed = STEPS.find((s) => st(s.id).state === 'fail');
+    el.className = `tline ${t.done ? (t.ok ? 'ok' : 'fail') : 'run'}`;
+    el.innerHTML = `<div class="track" role="img" aria-label="${esc(t.done ? (t.ok ? 'Connection works' : 'Connection failed') : 'Testing the connection')}">
+        <span class="end">${ic('vm')}</span>${STEPS.map((s) => `<span class="seg2 ${st(s.id).state || ''}"></span><span class="node ${st(s.id).state || ''}" title="${esc(s.label)}"></span>`).join('')}
+      </div>
+      <div class="tlabels">${STEPS.map((s) => `<span class="${st(s.id).state || ''}">${s.label}</span>`).join('')}</div>
+      <ul class="tsteps">${STEPS.filter((s) => st(s.id).detail).map((s) => `<li class="${st(s.id).state}">${ic(st(s.id).state === 'ok' ? 'pass-filled' : st(s.id).state === 'warn' ? 'warning' : st(s.id).state === 'fail' ? 'error' : 'circle-large-outline')}<span>${esc(st(s.id).detail)}</span></li>`).join('')}</ul>
+      ${t.suggest ? `<button class="suggest" data-c="usesuggest">${ic('lightbulb')}<span>The API is at <b>${esc(t.suggest)}</b>. Use it</span></button>` : ''}
+      ${t.done && t.ok ? `<p class="tdone">${t.tools === 'text' ? 'Ready. This model has no native tool calls, so Tugline uses its text protocol: it works, a little slower.' : 'Ready to use.'}</p>` : ''}
+      ${t.done && !t.ok && failed ? `<p class="tdone bad">Fix the ${failed.label.toLowerCase()} step above, then test again.</p>` : ''}`;
+  }
+  function runTest() {
+    const p = draftPayload();
+    conn.testReq++;
+    conn.test = { req: conn.testReq, steps: {}, done: false, ok: false };
+    renderTest();
+    $('stab-connections')?.querySelector('.formacts')?.scrollIntoView({ block: 'nearest' });
+    vscode.postMessage({ type: 'conn', action: 'test', reqId: conn.testReq, draft: p });
+  }
+
+  function loadModels(force) {
+    const d = conn.d;
+    const url = d.baseUrl.trim();
+    if (!/^https?:\/\/\S+$/.test(url)) {
+      conn.models = [];
+      conn.modelsErr = '';
+      return renderModelList();
     }
-    const locked = e.locked || {};
+    const k = url + '|' + d.apiKey + '|' + d.headers.map((h) => `${h.name}=${h.value || ''}`).join(',');
+    if (!force && conn.modelsFor === k) return;
+    conn.modelsFor = k;
+    conn.modelsLoading = true;
+    conn.modelsErr = '';
+    conn.suggest = '';
+    conn.modelsReq++;
+    vscode.postMessage({ type: 'conn', action: 'models', reqId: conn.modelsReq, draft: draftPayload() });
+    renderModelList();
+    renderSuggest();
+  }
+
+  function saveConn(use) {
+    const p = draftPayload();
+    if (!/^https?:\/\/\S+$/.test(p.baseUrl)) return formError('Enter the base URL, starting with http:// or https://.', '#cfUrl');
+    if (!p.model) return formError('Choose a model, or type its name.', '#cfModel');
+    conn.saving = true;
+    conn.msg = null;
+    renderFormMsg();
+    $('stab-connections').querySelectorAll('.formacts button').forEach((b) => (b.disabled = true));
+    vscode.postMessage({ type: 'conn', action: 'save', draft: p, use });
+  }
+  function formError(text, focus) {
+    conn.msg = { bad: true, text };
+    renderFormMsg();
+    if (focus) $('stab-connections').querySelector(focus)?.focus();
+  }
+
+  function bindConnections(pane) {
+    let urlTimer;
+    pane.addEventListener('input', (e) => {
+      const t = e.target;
+      const d = conn.d;
+      if (!d) return;
+      if (t.id === 'cfUrl') {
+        d.baseUrl = t.value;
+        $('cfModel')?.setAttribute('placeholder', /^https?:\/\/\S+$/.test(d.baseUrl.trim()) ? 'Search the server\u2019s models or type a name' : 'Enter the base URL first');
+        clearTimeout(urlTimer);
+        urlTimer = setTimeout(() => loadModels(false), 700);
+      } else if (t.id === 'cfKey') d.apiKey = t.value;
+      else if (t.id === 'cfName') d.name = t.value;
+      else if (t.id === 'cfModel') {
+        d.model = t.value;
+        d.typing = true;
+        conn.listOpen = true;
+        renderModelList();
+      } else if (t.id === 'cfCtxCustom') d.ctxCustom = t.value;
+      else if (t.id === 'cfOutCustom') d.outCustom = t.value;
+      else if (t.classList.contains('hn') || t.classList.contains('hv')) {
+        const h = d.headers[Number(t.closest('.hrow').dataset.h)];
+        if (t.classList.contains('hn')) h.name = t.value;
+        else h.value = t.value;
+      }
+    });
+    pane.addEventListener('change', (e) => {
+      const t = e.target;
+      if (!conn.d) return;
+      if (t.id === 'cfKey' || t.classList.contains('hv')) loadModels(false);
+      if (t.id === 'cfVision') {
+        conn.d.vision = t.checked;
+        renderSizes();
+      }
+      if (t.id === 'cfOutCustom') renderSizes();
+    });
+    pane.addEventListener('focusin', (e) => {
+      if (e.target.id === 'cfModel' && conn.d && !conn.listOpen) {
+        conn.listOpen = true;
+        conn.d.typing = false;
+        loadModels(false);
+        renderModelList();
+      }
+    });
+    pane.addEventListener('keydown', (e) => {
+      if (e.target.id !== 'cfModel') return;
+      const opts = [...pane.querySelectorAll('#cfList .mo')];
+      const i = opts.findIndex((o) => o.classList.contains('cur'));
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const n = opts.length ? (i + (e.key === 'ArrowDown' ? 1 : -1) + opts.length) % opts.length : -1;
+        opts.forEach((o, k) => o.classList.toggle('cur', k === n));
+        opts[n]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        pickModel(i >= 0 ? opts[i].dataset.model : conn.d.model.trim());
+      } else if (e.key === 'Escape') {
+        conn.listOpen = false;
+        renderModelList();
+      }
+    });
+    pane.addEventListener('focusout', (e) => {
+      // close the list when focus leaves the model box (a click on an option is a mousedown first)
+      if (e.target.id === 'cfModel') setTimeout(() => { if (conn.d && document.activeElement?.id !== 'cfModel' && conn.listOpen) { conn.listOpen = false; renderModelList(); renderSizes(); } }, 150);
+    });
+    pane.addEventListener('mousedown', (e) => {
+      const mo = e.target.closest('#cfList .mo');
+      if (mo) {
+        e.preventDefault();
+        pickModel(mo.dataset.model);
+      }
+    });
+    pane.addEventListener('click', (e) => {
+      const tile = e.target.closest('.tile[data-p]');
+      if (tile) return openForm(null, provider(tile.dataset.p));
+      const ctxb = e.target.closest('[data-ctx]');
+      if (ctxb) {
+        const v = ctxb.dataset.ctx;
+        conn.d.ctxPick = v === 'auto' || v === 'custom' ? v : Number(v);
+        renderSizes();
+        if (v === 'custom') $('cfCtxCustom')?.focus();
+        return;
+      }
+      const outb = e.target.closest('[data-out]');
+      if (outb) {
+        const v = outb.dataset.out;
+        conn.d.outPick = v === 'auto' || v === 'custom' ? v : Number(v);
+        renderSizes();
+        if (v === 'custom') $('cfOutCustom')?.focus();
+        return;
+      }
+      const tool = e.target.closest('#cfTool button');
+      if (tool) {
+        conn.d.toolMode = tool.dataset.v;
+        pane.querySelectorAll('#cfTool button').forEach((x) => x.classList.toggle('on', x === tool));
+        return renderSizes();
+      }
+      const b = e.target.closest('[data-c]');
+      if (!b) return;
+      const row = b.closest('.crow');
+      const id = row?.dataset.id;
+      const c = conn.list.find((x) => x.id === id);
+      switch (b.dataset.c) {
+        case 'add':
+          return openGallery();
+        case 'back':
+          conn.view = conn.view === 'form' && !conn.d?.id ? 'gallery' : 'list';
+          conn.msg = null;
+          return renderConnections();
+        case 'use':
+          b.disabled = true;
+          return vscode.postMessage({ type: 'conn', action: 'use', id });
+        case 'edit':
+          return openForm(c);
+        case 'dup':
+          return vscode.postMessage({ type: 'conn', action: 'duplicate', id });
+        case 'del':
+          return row.querySelector('.cconfirm').classList.remove('hidden');
+        case 'delno':
+          return row.querySelector('.cconfirm').classList.add('hidden');
+        case 'delyes':
+          return vscode.postMessage({ type: 'conn', action: 'delete', id });
+        case 'clearkey':
+          conn.d.clearKey = true;
+          conn.d.apiKey = '';
+          return renderForm(pane);
+        case 'keepkey':
+          conn.d.clearKey = false;
+          return renderForm(pane);
+        case 'reload':
+          return loadModels(true);
+        case 'usesuggest': {
+          const u = conn.suggest || conn.test?.suggest;
+          if (!u) return;
+          conn.d.baseUrl = u;
+          conn.suggest = '';
+          conn.test = null;
+          pane.querySelector('#cfUrl').value = u;
+          renderTest();
+          return loadModels(true);
+        }
+        case 'addh':
+          conn.d.headers.push({ name: '', value: '' });
+          renderHeaders();
+          renderSizes();
+          return pane.querySelector('.hrow:last-child .hn')?.focus();
+        case 'rmh':
+          conn.d.headers.splice(Number(b.closest('.hrow').dataset.h), 1);
+          renderHeaders();
+          return renderSizes();
+        case 'test':
+          return runTest();
+        case 'save':
+          return saveConn(false);
+        case 'saveuse':
+          return saveConn(true);
+      }
+    });
+    pane.addEventListener('toggle', (e) => {
+      if (e.target.classList?.contains('fmore') && conn.d) conn.d.moreOpen = e.target.open;
+    }, true);
+    pane.addEventListener('click', (e) => {
+      if (e.target.id === 'cfKeyShow' || e.target.closest('#cfKeyShow')) {
+        const k = pane.querySelector('#cfKey');
+        k.type = k.type === 'password' ? 'text' : 'password';
+      }
+    });
+  }
+  function pickModel(id) {
+    if (!id || !conn.d) return;
+    conn.d.model = id;
+    conn.d.typing = false;
+    conn.listOpen = false;
+    const input = $('cfModel');
+    if (input) input.value = id;
+    // a size the user picked stays; Auto follows the new model
+    renderModelList();
+    renderSizes();
+    if (!conn.d.name && conn.d.provider === 'custom') $('cfName')?.setAttribute('placeholder', id);
+  }
+
+  // ---- behaviour and safety
+
+  function renderSettings() {
+    settingsSkeleton();
+    showTab(state.stab);
+    const s = settingsData;
+    if (!s) return;
     const pr = s.prefs || {};
+    const beh = $('stab-behaviour');
+    beh.innerHTML = `<div class="phead"><div><h2>Behaviour</h2><p class="hint">How much the agent may do without asking, for new chats. Each chat can change it from the message box.</p></div></div>
+      <div class="modes" role="radiogroup" aria-label="Default permission mode">${MODES.map((m) => `<label class="moderow ${pr.permissionMode === m.value ? 'on' : ''} m-${m.value}"><input type="radio" name="pfMode" value="${m.value}" ${pr.permissionMode === m.value ? 'checked' : ''}><span class="mdot"></span><span class="mtx"><b>${esc(m.label)}</b><span class="hint">${esc(m.desc)}</span></span></label>`).join('')}</div>
+      <div class="toggles"><label class="toggle"><input type="checkbox" id="pfNotify" ${pr.notifications !== false ? 'checked' : ''}><span class="sw"></span>Notify me when a long task finishes</label>
+      <label class="toggle"><input type="checkbox" id="pfTerminal" ${pr.visibleTerminal ? 'checked' : ''}><span class="sw"></span>Run commands in a visible terminal</label></div>
+      <div class="row links"><a href="#" data-sl="vss">${ic('settings')}All VS Code settings for Tugline</a></div>`;
+    beh.querySelectorAll('input[name="pfMode"]').forEach((r) => (r.onchange = () => {
+      vscode.postMessage({ type: 'settings', action: 'pref', key: 'permissionMode', value: r.value });
+      beh.querySelectorAll('.moderow').forEach((x) => x.classList.toggle('on', x.querySelector('input').checked));
+    }));
+    beh.querySelector('#pfNotify').onchange = (ev) => vscode.postMessage({ type: 'settings', action: 'pref', key: 'notifications', value: ev.target.checked });
+    beh.querySelector('#pfTerminal').onchange = (ev) => vscode.postMessage({ type: 'settings', action: 'pref', key: 'visibleTerminal', value: ev.target.checked });
+    beh.querySelector('[data-sl="vss"]').onclick = (ev) => (ev.preventDefault(), vscode.postMessage({ type: 'settings', action: 'vscodeSettings', scope: settingsScope }));
+
     const sc = s[settingsScope];
     const d = sc.data || {};
     const perms = d.permissions || {};
     const hooks = d.hooks || {};
-    const preset = presetOf(ep.baseUrl);
-    el.innerHTML = `<div class="settings">
-      <section class="card sec" id="sec-model">
-        <div class="sech">${ic('sparkle')}<h3>Model</h3></div>
-        <p class="hint">Tugline works with any OpenAI-compatible endpoint: a model on this computer, your company's server, or a hosted API.</p>
-        ${locked.baseUrl || locked.model ? `<p class="caveat">${ic('lock')} Your organisation manages the endpoint${locked.model ? ` (${esc(locked.model)})` : ''}. It cannot be changed here.</p>` : ''}
-        <div class="field"><label for="epPreset">Provider</label><select id="epPreset" ${locked.baseUrl ? 'disabled' : ''}>${PRESETS.map((p) => `<option value="${p.id}" ${p.id === preset ? 'selected' : ''}>${esc(p.label)}</option>`).join('')}</select></div>
-        <div class="field"><label for="epUrl">Base URL</label><input id="epUrl" spellcheck="false" placeholder="https://ai.example.com/v1" value="${esc(ep.baseUrl)}" ${locked.baseUrl ? 'disabled' : ''}><span class="hint">The API address, usually ending in <code>/v1</code> (Open WebUI: <code>/api</code>), not the chat website's address.</span></div>
-        <div class="field"><label for="epKey">API key</label><div class="pw"><input id="epKey" type="password" spellcheck="false" autocomplete="off" placeholder="${e.hasKey ? '•••••••• saved — type to replace' : 'Leave empty if your endpoint needs none'}" value="${esc(ep.apiKey)}"><button class="ib" id="epKeyShow" title="Show or hide the key" aria-label="Show or hide the key">${ic('eye')}</button></div><span class="hint">Kept in VS Code's secret storage, never in settings files.${e.hasKey ? ' <a href="#" data-ep="clearKey">Remove the saved key</a>' : ''}</span></div>
-        <div class="field"><label for="epModel">Model</label><div class="row tight"><input id="epModel" spellcheck="false" placeholder="Type or pick from the list" value="${esc(ep.model)}" ${locked.model ? 'disabled' : ''}><button class="secondary" id="epLoad" title="Ask the endpoint which models it serves">${ic('refresh')}Load</button></div><div id="epModels"></div></div>
-        <details class="more" ${ep.moreOpen ? 'open' : ''}><summary>Advanced: context window, output limit, tool calling</summary>
-          <div class="grid2">
-            <div class="field"><label for="epCtx">Context window (tokens)</label><input id="epCtx" type="number" min="0" step="1024" placeholder="auto" value="${esc(ep.ctx)}"></div>
-            <div class="field"><label for="epMax">Max output tokens</label><input id="epMax" type="number" min="0" step="256" value="${esc(ep.maxOut)}"></div>
-          </div>
-          <div class="field"><label>Tool calling</label><div class="seg" id="epTool">${[['auto', 'Auto'], ['native', 'Native'], ['text', 'Text protocol']].map(([v, l]) => `<button class="${ep.toolMode === v ? 'on' : ''}" data-v="${v}">${l}</button>`).join('')}</div><span class="hint">Auto uses the model's native tool calls and falls back to a text protocol when the server rejects them.</span></div>
-        </details>
-        <div class="row acts"><button id="epSave" ${ep.busy ? 'disabled' : ''}>${ic('check')}Save and test</button><button class="secondary" id="epTest" ${ep.busy ? 'disabled' : ''}>Test connection</button></div>
-        <div id="epResult">${epResultHtml()}</div>
-      </section>
-      <section class="card sec">
-        <div class="sech">${ic('settings')}<h3>Behaviour</h3></div>
-        <div class="field"><label for="pfMode">Default permission mode for new chats</label><select id="pfMode">${MODES.map((m) => `<option value="${m.value}" ${pr.permissionMode === m.value ? 'selected' : ''}>${esc(m.label)}: ${esc(m.desc)}</option>`).join('')}</select></div>
-        <label class="toggle"><input type="checkbox" id="pfNotify" ${pr.notifications !== false ? 'checked' : ''}><span class="sw"></span>Notify me when a long task finishes</label>
-        <label class="toggle"><input type="checkbox" id="pfTerminal" ${pr.visibleTerminal ? 'checked' : ''}><span class="sw"></span>Run commands in a visible terminal</label>
-      </section>
-      <details class="card sec" ${state.rulesOpen ? 'open' : ''} id="secRules"><summary class="sech">${ic('shield')}<h3>Rules and safety</h3><span class="hint">protected files, allow and deny rules, hooks</span></summary>
-      <div class="row"><span class="hint">Applies to</span><select id="scope"><option value="user">You (~/.tugline)</option><option value="project" ${s.hasWorkspace ? '' : 'disabled'}>This project (.tugline)</option></select></div>
-      ${settingsScope === 'project' ? `<p class="caveat">${s.trusted ? 'This workspace is trusted: its project config applies in full.' : 'This workspace is not trusted. From project config only deny rules, protected paths and disabled skills take effect; allow rules, modes, hooks and MCP servers are ignored until you trust it.'}</p>` : ''}
+    const saf = $('stab-safety');
+    saf.innerHTML = `<div class="phead"><div><h2>Safety</h2><p class="hint">Files the agent must never change, commands it may or may not run, and hooks. Deny rules and protected files apply in every mode.</p></div></div>
+      <div class="seg scope" id="scopeSeg"><button data-scope="user" class="${settingsScope === 'user' ? 'on' : ''}">For you</button><button data-scope="project" class="${settingsScope === 'project' ? 'on' : ''}" ${s.hasWorkspace ? '' : 'disabled'}>For this project</button></div>
+      ${settingsScope === 'project' ? `<p class="caveat">${ic('info')}<span>${s.trusted ? 'This workspace is trusted: its project config applies in full.' : 'This workspace is not trusted. From project config only deny rules, protected paths and disabled skills take effect; allow rules, modes, hooks and MCP servers are ignored until you trust it.'}</span></p>` : ''}
       <p class="hint mono">${esc(sc.file || sc.error || '')}</p>
-      <div class="field"><label for="pp">Protected paths (one glob per line; the agent may never write these)</label><textarea id="pp" rows="3">${esc((perms.protectedPaths || []).join('\n'))}</textarea></div>
-      <div class="row"><button class="secondary" id="savepp">Save protected paths</button></div>
-      <div class="field"><label for="allow">Allow rules (e.g. <code>bash(npm test)</code>, <code>edit(src/**)</code>)</label><textarea id="allow" rows="3">${esc((perms.allow || []).join('\n'))}</textarea></div>
-      <div class="field"><label for="deny">Deny rules</label><textarea id="deny" rows="3">${esc((perms.deny || []).join('\n'))}</textarea></div>
-      <div class="row"><button class="secondary" id="saverules">Save rules</button></div>
-      <div class="field"><label for="hookev">Hooks</label><select id="hookev">${['PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop', 'SessionStart', 'SessionEnd', 'PreCompact', 'SubagentStart', 'SubagentStop', 'PermissionRequest', 'Notification'].map((h) => `<option>${h}</option>`).join('')}</select><textarea id="hooks" rows="4" class="mono"></textarea><span class="hint">JSON list: [{"matcher":"bash","command":"./check.sh"}]. Project hooks also need approval (/hooks approve).</span></div>
-      <div class="row"><button class="secondary" id="savehooks">Save hooks</button></div>
-      </details>
-      <div class="row links"><a href="#" id="rulesfile">${ic('book')}Edit ${settingsScope === 'user' ? '~/.tugline/AGENTS.md' : 'AGENTS.md'} (instructions)</a><a href="#" id="openfile">${ic('json')}Open config file</a><a href="#" id="vss">${ic('settings')}All VS Code settings</a></div>
-    </div>`;
-    el.querySelector('#scope').value = settingsScope;
-    renderModelList();
-    // ---- model card
-    const bind = (id, key) => el.querySelector(id)?.addEventListener('input', (ev) => { ep[key] = ev.target.value; ep.dirty = true; });
-    bind('#epUrl', 'baseUrl');
-    bind('#epKey', 'apiKey');
-    bind('#epCtx', 'ctx');
-    bind('#epMax', 'maxOut');
-    el.querySelector('#epModel')?.addEventListener('input', (ev) => { ep.model = ev.target.value; ep.dirty = true; ep.typing = true; renderModelList(); });
-    el.querySelector('#epUrl')?.addEventListener('change', () => loadModels(false));
-    el.querySelector('#epKey')?.addEventListener('change', () => loadModels(false));
-    el.querySelector('#epModel')?.addEventListener('focus', () => loadModels(false));
-    el.querySelector('#epPreset')?.addEventListener('change', (ev) => {
-      const p = PRESETS.find((x) => x.id === ev.target.value);
-      ep.dirty = true;
-      if (p && p.url) ep.baseUrl = p.url;
-      else if (p && p.id === 'company' && PRESETS.some((x) => x.url === ep.baseUrl)) ep.baseUrl = '';
-      el.querySelector('#epUrl').value = ep.baseUrl;
-      if (p && p.id === 'company') el.querySelector('#epUrl').focus();
-      ep.models = [];
-      ep.modelsNote = '';
-      ep.suggest = '';
-      loadModels(true);
-    });
-    el.querySelector('#epKeyShow').onclick = () => { const k = el.querySelector('#epKey'); k.type = k.type === 'password' ? 'text' : 'password'; };
-    el.querySelector('#epLoad').onclick = () => loadModels(true);
-    el.querySelector('#epModels').addEventListener('click', (ev) => {
-      const mi = ev.target.closest('.mi[data-model]');
-      if (mi) {
-        ep.model = mi.dataset.model;
-        ep.typing = false;
-        ep.dirty = true;
-        el.querySelector('#epModel').value = ep.model;
-        renderModelList();
-      }
-      const sug = ev.target.closest('[data-ep="useSuggest"]');
-      if (sug) {
-        ep.baseUrl = ep.suggest;
-        ep.dirty = true;
-        el.querySelector('#epUrl').value = ep.baseUrl;
-        ep.suggest = '';
-        loadModels(true);
-      }
-    });
-    el.querySelector('.more').ontoggle = (ev) => (ep.moreOpen = ev.target.open);
-    el.querySelectorAll('#epTool button').forEach((b) => (b.onclick = () => { ep.toolMode = b.dataset.v; ep.dirty = true; el.querySelectorAll('#epTool button').forEach((x) => x.classList.toggle('on', x === b)); }));
-    el.querySelector('[data-ep="clearKey"]')?.addEventListener('click', (ev) => { ev.preventDefault(); vscode.postMessage({ type: 'settings', action: 'clearKey' }); });
-    const saveEp = () => {
-      const url = ep.baseUrl.trim();
-      if (!/^https?:\/\/\S+$/.test(url)) {
-        ep.result = { ok: false, error: 'Enter the base URL, starting with http:// or https://.' };
-        return (el.querySelector('#epResult').innerHTML = epResultHtml());
-      }
-      ep.busy = true;
-      ep.result = { busy: true, text: `Saving and testing ${ep.model || 'the endpoint'}…` };
-      vscode.postMessage({ type: 'settings', action: 'saveEndpoint', baseUrl: url, apiKey: ep.apiKey || undefined, model: ep.model.trim(), contextWindow: Number(ep.ctx) || 0, maxOutputTokens: Number(ep.maxOut) || 0, toolMode: ep.toolMode });
-      renderSettings();
-    };
-    el.querySelector('#epSave').onclick = saveEp;
-    el.querySelector('#epTest').onclick = () => {
-      ep.busy = true;
-      ep.result = { busy: true, text: 'Testing the saved endpoint…' };
-      vscode.postMessage({ type: 'settings', action: 'testEndpoint' });
-      renderSettings();
-    };
-    // ---- behaviour (VS Code settings)
-    const pref = (key, value) => vscode.postMessage({ type: 'settings', action: 'pref', key, value });
-    el.querySelector('#pfMode').onchange = (ev) => pref('permissionMode', ev.target.value);
-    el.querySelector('#pfNotify').onchange = (ev) => pref('notifications', ev.target.checked);
-    el.querySelector('#pfTerminal').onchange = (ev) => pref('visibleTerminal', ev.target.checked);
-    // ---- rules and safety (config files)
-    el.querySelector('#secRules').ontoggle = (ev) => (state.rulesOpen = ev.target.open);
-    const hookText = () => JSON.stringify(hooks[el.querySelector('#hookev').value] || [], null, 2);
-    el.querySelector('#hooks').value = hookText();
-    el.querySelector('#hookev').onchange = () => (el.querySelector('#hooks').value = hookText());
-    el.querySelector('#scope').onchange = (ev) => { settingsScope = ev.target.value; renderSettings(); };
-    const lines = (id) => el.querySelector(id).value.split('\n').map((x) => x.trim()).filter(Boolean);
+      <div class="field"><label for="pp">Protected paths</label><textarea id="pp" rows="3" spellcheck="false" placeholder=".env&#10;secrets/**">${esc((perms.protectedPaths || []).join('\n'))}</textarea><span class="hint">One glob per line. The agent can never write these.</span></div>
+      <div class="row"><button class="secondary sm" id="savepp">Save protected paths</button></div>
+      <div class="field"><label for="allow">Allow rules</label><textarea id="allow" rows="3" spellcheck="false" placeholder="bash(npm test)&#10;edit(src/**)">${esc((perms.allow || []).join('\n'))}</textarea></div>
+      <div class="field"><label for="deny">Deny rules</label><textarea id="deny" rows="3" spellcheck="false" placeholder="bash(git push*)">${esc((perms.deny || []).join('\n'))}</textarea></div>
+      <div class="row"><button class="secondary sm" id="saverules">Save rules</button></div>
+      <details class="fmore" ${state.hooksOpen ? 'open' : ''} id="hooksBox"><summary>${ic('chevron-right')}Hooks</summary>
+        <div class="field"><label for="hookev">When</label><select id="hookev">${['PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop', 'SessionStart', 'SessionEnd', 'PreCompact', 'SubagentStart', 'SubagentStop', 'PermissionRequest', 'Notification'].map((h) => `<option>${h}</option>`).join('')}</select><textarea id="hooks" rows="4" class="mono" spellcheck="false"></textarea><span class="hint">A JSON list, such as [{"matcher":"bash","command":"./check.sh"}]. Project hooks also need approval (/hooks approve).</span></div>
+        <div class="row"><button class="secondary sm" id="savehooks">Save hooks</button></div></details>
+      <div class="row links"><a href="#" id="rulesfile">${ic('book')}Edit ${settingsScope === 'user' ? '~/.tugline/AGENTS.md' : 'AGENTS.md'} (instructions)</a><a href="#" id="openfile">${ic('json')}Open the config file</a></div>`;
+    saf.querySelector('#hooksBox').ontoggle = (ev) => (state.hooksOpen = ev.target.open);
+    saf.querySelectorAll('#scopeSeg button').forEach((b) => (b.onclick = () => { settingsScope = b.dataset.scope; renderSettings(); }));
+    const hookText = () => JSON.stringify(hooks[saf.querySelector('#hookev').value] || [], null, 2);
+    saf.querySelector('#hooks').value = hookText();
+    saf.querySelector('#hookev').onchange = () => (saf.querySelector('#hooks').value = hookText());
+    const lines = (id) => saf.querySelector(id).value.split('\n').map((x) => x.trim()).filter(Boolean);
     const post = (m) => vscode.postMessage({ type: 'settings', scope: settingsScope, ...m });
-    el.querySelector('#savepp').onclick = () => post({ action: 'protectedPaths', value: lines('#pp') });
-    el.querySelector('#saverules').onclick = () => post({ action: 'rules', allow: lines('#allow'), deny: lines('#deny') });
-    el.querySelector('#savehooks').onclick = () => {
+    const saved = (b) => { const t = b.innerHTML; b.innerHTML = `${ic('check')}Saved`; setTimeout(() => (b.innerHTML = t), 1400); };
+    saf.querySelector('#savepp').onclick = (ev) => (post({ action: 'protectedPaths', value: lines('#pp') }), saved(ev.currentTarget));
+    saf.querySelector('#saverules').onclick = (ev) => (post({ action: 'rules', allow: lines('#allow'), deny: lines('#deny') }), saved(ev.currentTarget));
+    saf.querySelector('#savehooks').onclick = (ev) => {
       try {
-        post({ action: 'hooks', event: el.querySelector('#hookev').value, hooks: JSON.parse(el.querySelector('#hooks').value || '[]') });
+        post({ action: 'hooks', event: saf.querySelector('#hookev').value, hooks: JSON.parse(saf.querySelector('#hooks').value || '[]') });
+        saved(ev.currentTarget);
       } catch (err) {
         add(active, 'error', `Hooks: invalid JSON (${esc(err.message)})`);
       }
     };
-    el.querySelector('#rulesfile').onclick = (ev) => (ev.preventDefault(), post({ action: 'rulesFile' }));
-    el.querySelector('#openfile').onclick = (ev) => (ev.preventDefault(), post({ action: 'openFile' }));
-    el.querySelector('#vss').onclick = (ev) => (ev.preventDefault(), post({ action: 'vscodeSettings' }));
-    if (state.focusModel) {
-      state.focusModel = false;
-      el.querySelector('#sec-model').scrollIntoView({ block: 'start' });
-      (ep.baseUrl ? el.querySelector('#epModel') : el.querySelector('#epUrl'))?.focus();
+    saf.querySelector('#rulesfile').onclick = (ev) => (ev.preventDefault(), post({ action: 'rulesFile' }));
+    saf.querySelector('#openfile').onclick = (ev) => (ev.preventDefault(), post({ action: 'openFile' }));
+  }
+
+  /** Messages for the connection manager. */
+  function onConnMessage(m) {
+    switch (m.type) {
+      case 'connections': {
+        conn.list = m.list || [];
+        conn.providers = m.providers || conn.providers;
+        conn.locked = m.locked || {};
+        conn.loaded = true;
+        settingsSkeleton();
+        if (conn.view === 'form' && conn.d?.id) {
+          // keep the form; refresh what the list shows about it
+          const c = conn.list.find((x) => x.id === conn.d.id);
+          if (c) {
+            conn.d.hasKey = c.hasKey;
+            conn.d.active = c.active;
+          }
+        } else if (conn.view !== 'form') renderConnections();
+        applyConnFocus();
+        renderHero();
+        break;
+      }
+      case 'connLocal':
+        conn.local = m.servers || [];
+        if (conn.view === 'gallery') renderConnections();
+        break;
+      case 'connModels':
+        if (m.reqId !== conn.modelsReq || !conn.d) break;
+        conn.modelsLoading = false;
+        conn.models = m.models || [];
+        conn.ollama = !!m.ollama;
+        conn.modelsErr = m.error || '';
+        conn.suggest = m.suggestBaseUrl || '';
+        // an existing connection's saved size that equals what the server reports is Auto
+        if (conn.d.savedCtx && conn.d.ctxPick !== 'auto' && modelInfo()?.contextWindow === conn.d.savedCtx) conn.d.ctxPick = 'auto';
+        renderModelList();
+        renderSizes();
+        renderSuggest();
+        break;
+      case 'connTest': {
+        const t = conn.test;
+        if (!t || m.reqId !== t.req) break;
+        if (m.name === 'done') {
+          t.done = true;
+          t.ok = m.state === 'ok';
+          t.tools = m.tools;
+          requestAnimationFrame(() => $('stab-connections')?.querySelector('.formacts')?.scrollIntoView({ block: 'nearest' }));
+          if (m.contextWindow && !conn.models.some((x) => x.id === conn.d.model)) conn.models.push({ id: conn.d.model, contextWindow: m.contextWindow });
+          renderSizes();
+        } else {
+          t.steps[m.name] = { state: m.state, detail: m.detail };
+          if (m.suggestBaseUrl) t.suggest = m.suggestBaseUrl;
+        }
+        renderTest();
+        break;
+      }
+      case 'connSaved':
+        conn.saving = false;
+        if (!m.ok) {
+          conn.msg = { bad: true, text: m.error || 'The connection could not be saved.' };
+          if (conn.view === 'form') renderForm($('stab-connections'));
+          break;
+        }
+        conn.view = 'list';
+        conn.msg = { bad: false, text: `${m.used ? 'Saved. All new messages use it.' : 'Saved.'}${m.dropped ? ' The old key was removed because the server changed.' : ''}` };
+        renderConnections();
+        break;
+      case 'connError':
+        conn.saving = false;
+        conn.msg = { bad: true, text: m.error };
+        if (conn.view === 'form') renderFormMsg();
+        else renderConnections();
+        break;
     }
   }
 
@@ -1074,7 +1597,9 @@
         picker.choice = m.choice || '';
         picker.items = m.picker || [];
         picker.effort = m.effort || 'default';
+        picker.connections = m.connections || [];
         setModelLabel();
+        renderHero();
         setEffortLabel();
         $('mic').classList.toggle('hidden', !m.voice);
         if (m.mode) {
@@ -1235,28 +1760,18 @@
         settingsData = m;
         renderSettings();
         break;
-      case 'endpointModels':
-        if (m.reqId !== ep.req) break;
-        ep.loading = false;
-        ep.typing = false;
-        ep.models = m.models || [];
-        ep.modelsErr = !!m.error;
-        ep.suggest = m.suggestBaseUrl || '';
-        ep.modelsNote = m.error ? m.error : ep.models.length ? `${ep.models.length} model${ep.models.length === 1 ? '' : 's'} on this endpoint: click one to use it.` : 'The endpoint listed no models. Type the model name.';
-        renderModelList();
-        break;
-      case 'endpointResult':
-        ep.busy = false;
-        // the form shows what was saved: the host's fresh settings when it sends them, else what the user typed
-        if (m.ok && m.settings) ep.dirty = false;
-        ep.apiKey = m.ok ? '' : ep.apiKey;
-        ep.result = { ok: m.ok, error: m.error, report: m.report, model: m.model };
-        if (m.settings) settingsData = m.settings;
-        if (state.view === 'settings') renderSettings();
+      case 'connections':
+      case 'connLocal':
+      case 'connModels':
+      case 'connTest':
+      case 'connSaved':
+      case 'connError':
+        onConnMessage(m);
         break;
       case 'showView':
-        if (m.focus === 'model') state.focusModel = true;
+        if (m.focus) state.connFocus = m.focus === 'model' ? 'connections' : m.focus;
         showView(m.view);
+        applyConnFocus();
         break;
       case 'event':
         onEvent(cid, m.event);
@@ -1342,4 +1857,6 @@
   }
 
   vscode.postMessage({ type: 'ready' });
+  // the saved connections (and the provider marks) for the model switcher
+  vscode.postMessage({ type: 'conn', action: 'load' });
 })();

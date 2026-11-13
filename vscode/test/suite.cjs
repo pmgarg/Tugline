@@ -11,6 +11,7 @@ const { execFileSync } = require('child_process');
 
 const mock = {
   requests: [],
+  seen: [],
   transcriptions: [],
   transcript: 'make the save button blue',
   start: 0,
@@ -32,6 +33,9 @@ const tc = (name, args) => ({ name, args });
 
 function mockServer() {
   const srv = http.createServer((req, res) => {
+    // every request's server name and key (connections: a key is never sent to another server)
+    mock.seen.push({ host: req.headers.host, auth: req.headers.authorization, url: req.url });
+    if (mock.seen.length > 5000) mock.seen.splice(0, 2500);
     const o = mock.ollama;
     if (o) {
       const json = (j) => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(j)); };
@@ -74,6 +78,9 @@ function mockServer() {
     req.on('end', () => {
       const body = JSON.parse(b || '{}');
       mock.requests.push(body);
+      // the credentials the last chat request carried (connections: a key and headers stay with their server)
+      mock.lastAuth = req.headers.authorization;
+      mock.lastTeam = req.headers['x-team'];
       const i = mock.requests.length - 1 - mock.start;
       const r = mock.script(body, i) || { content: 'ok' };
       const calls = (r.calls || []).map((c, k) => ({ id: `c${mock.requests.length}_${k}`, type: 'function', function: { name: c.name, arguments: JSON.stringify(c.args) } }));
@@ -665,6 +672,68 @@ exports.run = async function () {
       await cfg.update('baseUrl', mockUrl, vscode.ConfigurationTarget.Global);
       await cfg.update('model', 'mock-model', vscode.ConfigurationTarget.Global);
       P.lastOnboarding = undefined;
+    }
+  });
+
+  // ---- connections: the panel's connection manager, end to end against the mock server
+  await scenario('Connections: the configured endpoint becomes a connection; a new one is saved, tested step by step and switched to, with its own key and headers', async () => {
+    const mockUrl = `http://127.0.0.1:${srv.address().port}/v1`;
+    const last = (type, pred = () => true) => [...P.posted].reverse().find((m) => m.type === type && pred(m));
+    mock.set(() => ({ content: 'OK' }));
+    const model0 = cfg.inspect('model').globalValue;
+    const ctx0 = cfg.inspect('contextWindow').globalValue;
+    await P.connections.handle({ action: 'load' });
+    const list0 = last('connections').list;
+    const first = list0.find((c) => c.active);
+    assert(first && first.baseUrl === mockUrl.replace(/\/+$/, ''), `the configured endpoint is the active connection: ${JSON.stringify(list0)}`);
+    assert(!JSON.stringify(list0).includes('sk-'), 'no key in the list the panel gets');
+    try {
+      // the list of models, with what the server says about them
+      await P.connections.handle({ action: 'models', reqId: 501, draft: { baseUrl: mockUrl, model: '' } });
+      const models = last('connModels', (m) => m.reqId === 501);
+      assert(models && !models.error && models.models.length > 0, `models: ${JSON.stringify(models).slice(0, 300)}`);
+      // save a second connection (key and a custom header) and use it
+      await P.connections.handle({ action: 'save', use: true, draft: { name: 'E2E gateway', baseUrl: mockUrl, model: 'e2e-model', apiKey: 'sk-e2e-123', contextWindow: 98304, headers: [{ name: 'X-Team', value: 'team-7' }] } });
+      const saved = last('connSaved');
+      assert(saved && saved.ok && saved.used, `saved: ${JSON.stringify(saved)}`);
+      assert(cfg.inspect('model').globalValue === 'e2e-model' && cfg.inspect('contextWindow').globalValue === 98304, 'switching wrote the settings the agent reads');
+      // a prompt goes out with this connection's key and header
+      const chat = await freshChat('yolo');
+      mock.set(() => ({ content: 'hello from the gateway' }));
+      await P.sendPrompt('hi', { chatId: chat.id });
+      assert(mock.lastAuth === 'Bearer sk-e2e-123' && mock.lastTeam === 'team-7', `credentials: ${mock.lastAuth} / ${mock.lastTeam}`);
+      // the step-by-step test of the saved connection (its saved key is used, never sent back to the panel)
+      mock.set(() => ({ content: 'OK' }));
+      await P.connections.handle({ action: 'test', reqId: 502, draft: { id: saved.id, baseUrl: mockUrl, model: 'e2e-model' } });
+      const steps = P.posted.filter((m) => m.type === 'connTest' && m.reqId === 502).map((m) => `${m.name}:${m.state}`);
+      assert(steps.includes('server:ok') && steps.includes('chat:ok') && steps.some((x) => x.startsWith('done:')), `steps: ${steps.join(', ')}`);
+      assert(!JSON.stringify(P.posted.filter((m) => m.type === 'connTest')).includes('sk-e2e-123'), 'the key never reaches the panel');
+      // back to the first one: its own (empty) key, no header from the other
+      await P.connections.handle({ action: 'use', id: first.id });
+      assert(cfg.inspect('model').globalValue === first.model, 'switched back');
+      mock.set(() => ({ content: 'back' }));
+      await P.sendPrompt('again', { chatId: chat.id });
+      assert(mock.lastAuth !== 'Bearer sk-e2e-123' && mock.lastTeam === undefined, `the other connection's key and header stay with it: ${mock.lastAuth} / ${mock.lastTeam}`);
+      // the same mock under another origin (localhost, not 127.0.0.1) is another server: switching to it from the
+      // gateway connection must never send the gateway's key there, not even from the model-list refresh on the change
+      const otherUrl = mockUrl.replace('127.0.0.1', 'localhost');
+      await P.connections.handle({ action: 'use', id: saved.id });
+      await P.connections.handle({ action: 'save', use: true, draft: { name: 'Other server', baseUrl: otherUrl, model: 'mock-model' } });
+      const other = last('connSaved');
+      assert(other && other.ok, `other saved: ${JSON.stringify(other)}`);
+      await sleep(1500);
+      const port = mockUrl.split(':')[2].split('/')[0];
+      const leaked = mock.seen.filter((x) => x.host === `localhost:${port}` && x.auth === 'Bearer sk-e2e-123');
+      assert(leaked.length === 0, `the gateway key reached the other server: ${JSON.stringify(leaked)}`);
+      await P.connections.handle({ action: 'use', id: first.id });
+      await P.connections.handle({ action: 'delete', id: other.id });
+      await P.connections.handle({ action: 'delete', id: saved.id });
+      const after = last('connections').list;
+      assert(!after.some((c) => c.id === saved.id), `deleted: ${JSON.stringify(after.map((c) => [c.id, c.active, c.model]))} saved=${saved.id} error=${JSON.stringify(last('connError'))}`);
+    } finally {
+      await cfg.update('baseUrl', mockUrl, vscode.ConfigurationTarget.Global);
+      await cfg.update('model', model0 ?? 'mock-model', vscode.ConfigurationTarget.Global);
+      await cfg.update('contextWindow', ctx0, vscode.ConfigurationTarget.Global);
     }
   });
 

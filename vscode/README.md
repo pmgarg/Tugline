@@ -50,16 +50,20 @@ Tugline is a coding agent that runs on **the model you choose**. It works with a
 
 ## Get started
 1. Open **Tugline** in the activity bar.
-2. Connect your model, all inside the panel:
-   - **Ollama / LM Studio / llama.cpp:** start the server. The panel finds it and lists its models; click one. The context window is read automatically.
-   - **Your company's server (vLLM, SGLang, Open WebUI, a gateway) or a hosted API:** open **Settings** (the gear) → **Model**. Enter the base URL and API key, click **Load**, pick a model, then **Save and test**. The key is kept in VS Code's secret storage, never in settings files. If you enter the address of a chat website rather than its API, Tugline says so and offers the API address it finds on the same server.
+2. Connect your model, all inside the panel: **Settings** (the gear) → **Connections** → **Add a connection**.
+   - **Ollama / LM Studio / llama.cpp:** the gallery marks the ones running on this computer. Pick one, then a model.
+   - **Your company's server (vLLM, SGLang, Open WebUI, a gateway) or a hosted API (OpenRouter, OpenAI, Gemini, DeepSeek, Mistral, Groq, Together AI):** enter the base URL and API key. The model list loads from the server, with each model's context size; the context window is set to what the server reports, or pick 8K to 1M, or type any number. Custom headers for gateways are under More options.
+   - **Test** checks the connection step by step: the server answers, it serves the model, the model chats, the model calls a tool. A failed step says what to fix.
+   - Save several connections and switch between them from the model button under the message box. Each key is kept in VS Code's secret storage and sent only to the server it was saved for.
 3. Ask for something, for example "Fix the failing tests". Tugline reads the code, proposes edits, runs the tests and reports what it verified.
 
-![Settings inside the panel: provider, base URL, API key, model list and a connection test](images/settings.png)
+![A connection in the panel: base URL, API key, the server's models and the step-by-step test](images/settings.png)
+
+![Add a connection: local servers, your company's server or gateway, and hosted APIs](images/connections.png)
 
 Models with native tool calling work best. For models without it, Tugline switches to a text tool protocol automatically.
 
-![The start screen with three starter tasks](images/start.png)
+![The start screen: the line to your model, and three starter tasks](images/start.png)
 
 ## The CLI
 The same agent runs in your terminal and in scripts:

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.0: connections, set up in the panel
+- **Connections.** Save each place your model runs once: Ollama on this computer, your company's server, OpenRouter and so on. Switch between them from the model button under the message box. The endpoint you already use becomes the first connection, with its key.
+  - **Add a connection** opens a gallery: Ollama, LM Studio and llama.cpp (marked when they are running on this computer), a company server, Open WebUI, an API gateway, OpenRouter, OpenAI, Google Gemini, DeepSeek, Mistral, Groq, Together AI, or any URL.
+  - One form holds everything: the base URL, the API key, the model (searched from the server's list, with each model's context size and whether it calls tools), the context window (Auto uses the size the server reports, or pick 8K to 1M, or type any number), the longest reply, tool calling, images, custom headers and a name.
+  - **Test** checks a connection step by step on a line: the server answers, it serves the model, the model chats, the model calls a tool. A failed step says what to fix: a refused key, a chat website's address instead of its API, a certificate this computer does not trust.
+  - Each connection's key and custom header values are kept in VS Code's secret storage, separately. A key is sent only to the server it was saved for: change a connection's address to another server and its key is dropped unless you type a new one.
+- **Nothing opens the command palette.** **Add a Connection**, **Change the API Key** and **New skill** open in the panel; the old step-by-step palette wizard is gone. The model in the status bar opens the connections.
+- **A new look.** Tugline's own colours: indigo for actions, amber for a connection that answers. The welcome screen shows the line from your editor to your model, and whether it answered its last test. Settings are three tabs (Connections, Behaviour, Safety), and the permission modes are a list to choose from.
+- **Fix:** switching to another server (a local server on the setup card, or another connection) could send the previous server's API key to the new one in a model-list request made while the switch was under way. The old key is now removed before the address changes.
+
 ## 1.4.0: first stable release
 - **Faster replies.**
   - The system prompt and the tool list are now byte-identical in every chat. A model server that caches prompts (vLLM, llama.cpp, Ollama, SGLang) reuses them instead of reading about 5,000 tokens again for each new chat. The date and git status, which change, now ride on the message instead.

@@ -113,6 +113,8 @@ export interface GovernedOptions {
   get: SettingsGet;
   /** from SecretStorage (or TUG_API_KEY) */
   apiKey?: string;
+  /** the active connection's custom headers, from SecretStorage (they may carry credentials) */
+  secretHeaders?: Record<string, string>;
   /** VS Code workspace trust: false forces project config to restrict-only */
   vscodeTrusted?: boolean;
   env?: NodeJS.ProcessEnv;
@@ -139,6 +141,7 @@ export function governedConfig(o: GovernedOptions): HarnessConfig {
     if (v !== undefined) p[k] = v;
   }
   if (o.apiKey) p.apiKey = o.apiKey;
+  if (o.secretHeaders && Object.keys(o.secretHeaders).length) p.headers = { ...((p.headers as Record<string, string>) ?? {}), ...o.secretHeaders };
   cfg.profiles[profile] = p as Partial<ModelProfile>;
   // N43: only a real mode name (an old or mistyped value keeps the config's mode)
   const pm = def<PermissionMode>('permissionMode');

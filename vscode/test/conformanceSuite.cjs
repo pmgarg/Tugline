@@ -25,7 +25,7 @@ exports.run = async function () {
   let stopReason;
   let finalText = '';
   try {
-    const ext = vscode.extensions.all.find((e) => e.id.endsWith('tugline'));
+    const ext = vscode.extensions.all.find((e) => e.id === 'tugline.tugline-agent' || e.id === 'tugline.tugline');
     const api = await ext.activate();
     const P = api.provider;
     await vscode.commands.executeCommand('workbench.view.extension.tugline');

@@ -16,6 +16,7 @@
  *    reported instead of being treated as an answer (Session 15's billing bug);
  *  - tool-call ids are 9 alphanumeric chars (the strictest common format).
  */
+import { parseModelInfos, type ModelInfo } from './modelInfo.js';
 import { admitCall, settleCall, withAdmissionScope, type AdmissionScope } from './admission.js';
 import type { ChatMessage, ModelProfile, ToolSpec, Usage } from '../types.js';
 import { parseJsonLenient } from '../util/json.js';
@@ -216,6 +217,11 @@ export class LLMClient {
 
   /** List models (GET /models) — used by the setup UI to validate a connection. */
   async listModels(signal?: AbortSignal): Promise<string[]> {
+    return (await this.listModelInfo(signal)).map((m) => m.id);
+  }
+
+  /** GET /models with what the server says about each model (context window, output limit, tools, images). */
+  async listModelInfo(signal?: AbortSignal): Promise<ModelInfo[]> {
     const base = this.profile.baseUrl.replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
     const res = await fetch(`${base}/models`, { headers: this.headers(), signal });
     try {
@@ -224,7 +230,7 @@ export class LLMClient {
         if (looksLikeHtml(res, text)) throw new LLMError(notApiMessage(base, res), 'not_api', res.status, text.slice(0, 500));
         throw new LLMError(`GET /models failed: ${res.status} ${text}`.slice(0, 400), 'http', res.status);
       }
-      return modelIds(await apiJson(res, base));
+      return parseModelInfos(await apiJson(res, base));
     } catch (e) {
       if (!(e instanceof LLMError) || e.kind !== 'not_api') throw e;
       const found = await this.findApiBase(base, signal);

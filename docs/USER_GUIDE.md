@@ -705,7 +705,7 @@ Safety: servers always start through the OS sandbox (even with `shell.sandbox: "
 ## 8. VS Code
 
 ### Getting started
-Install the `.vsix` (see the README), click the Tugline icon, then **Tugline: Configure LLM Endpoint**. The API key goes to SecretStorage (**Tugline: Set API Key** changes it). **Tugline: Test LLM Connection** re-runs the probe.
+Install the `.vsix` (see the README), click the Tugline icon, then **Settings** (the gear) → **Connections** → **Add a connection**. Each connection's API key goes to SecretStorage, sent only to the server it was saved for (**Tugline: Change the API Key** opens the connection in use). **Tugline: Test LLM Connection** re-runs the probe.
 
 The panel has chat tabs and four views: **Chat**, **Checkpoints**, **MCP & Skills** and **Settings**. The **Agents** and **History** tree views sit next to it. The toolbar has the model picker, reasoning effort, permission mode and the context meter. The status bar shows the model and the sandbox state (the same line as the CLI banner): a warning background means commands run unsandboxed in `auto` or `yolo` mode, an error background means a required sandbox is missing and commands are refused.
 
@@ -731,8 +731,9 @@ The panel has chat tabs and four views: **Chat**, **Checkpoints**, **MCP & Skill
 | `tugline.stop` | Stop | |
 | `tugline.clearChat` | Clear Chat | |
 | `tugline.undo` | Undo Last Agent Edit | |
-| `tugline.configure` | Configure LLM Endpoint | |
-| `tugline.setApiKey` | Set API Key | |
+| `tugline.configure` | Connections (model endpoints) | Opens Settings → Connections in the panel |
+| `tugline.configureWizard` | Add a Connection | Opens the provider gallery in the panel |
+| `tugline.setApiKey` | Change the API Key | Opens the connection in use, in the panel |
 | `tugline.testConnection` | Test LLM Connection | |
 | `tugline.addSelection` | Add Selection to Chat | Ctrl/Cmd+Alt+L (with a selection) |
 | `tugline.openConfig` | Open Project Config (.tugline/config.json) | |

@@ -19,14 +19,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { loadConfig, resolveProfile } from '../../src/core/config.js';
-import { LLMClient, LLMError, type CompletionRequest } from '../../src/core/llm/client.js';
+import { LLMClient, type CompletionRequest } from '../../src/core/llm/client.js';
 import { admittedComplete } from './coreBridge.js';
 import { rawAdmission } from '../../src/core/llm/admission.js';
 import { isKilled, killAutomation, resetKillSwitch } from '../../src/core/automation/policy/index.js';
 import { clearStop, emergencyStop } from '../../src/core/automation/desktop/killswitch.js';
 import { ideConfig } from '../../src/core/host/vscode-contract.js';
 import { configureTreeSitter } from '../../src/core/edit/treesitter.js';
-import { autocompleteAdmission, clientProfile, explicitSettings, ideFromSettings, lockedFields, mergeIde } from './settingsConfig.js';
+import { autocompleteAdmission, clientProfile, explicitSettings, ideFromSettings, mergeIde } from './settingsConfig.js';
 import { ChatViewProvider, ProposedContent, PROPOSED_SCHEME, SECRET_KEY } from './chat.js';
 import { DiagnosticsWatch } from './host.js';
 import { BASE_SCHEME, ReviewManager } from './review.js';
@@ -45,58 +45,6 @@ import { VoiceController } from './voiceController.js';
 import { openWiki } from './wikiView.js';
 import { registerParity, type ParityApi } from './parity.js';
 
-async function configureWizard(ctx: vscode.ExtensionContext, provider: ChatViewProvider): Promise<void> {
-  const s = vscode.workspace.getConfiguration('tugline');
-  const governed = await provider.buildConfig(workspaceRoot() ?? process.cwd());
-  const locked = lockedFields(governed);
-  // the effective endpoint (config files + settings), not the contributed setting defaults
-  const cur = clientProfile(governed);
-  if (locked?.baseUrl || locked?.model) {
-    // C4: never send the API key to a URL typed here when the organisation locked the endpoint
-    void vscode.window.showWarningMessage(`Tugline: the model endpoint is locked by your organisation's managed policy (${locked.model ?? ''} @ ${locked.baseUrl ?? ''}). It cannot be changed here.`);
-    return;
-  }
-  const presets = [
-    { label: 'Ollama (local)', url: 'http://localhost:11434/v1' },
-    { label: 'LM Studio (local)', url: 'http://localhost:1234/v1' },
-    { label: 'llama.cpp server (local)', url: 'http://localhost:8080/v1' },
-    { label: 'vLLM / SGLang / company server', url: 'http://your-server:8000/v1' },
-    { label: 'OpenRouter', url: 'https://openrouter.ai/api/v1' },
-    { label: 'DeepSeek', url: 'https://api.deepseek.com/v1' },
-    { label: 'Custom URL…', url: '' },
-  ];
-  const pick = await vscode.window.showQuickPick(presets.map((p) => ({ label: p.label, description: p.url })), { title: 'Tugline: where is your LLM?', placeHolder: `current: ${cur.baseUrl}` });
-  if (!pick) return;
-  const baseUrl = await vscode.window.showInputBox({ title: 'Base URL (OpenAI-compatible)', value: pick.description || cur.baseUrl, ignoreFocusOut: true });
-  if (!baseUrl) return;
-  await s.update('baseUrl', baseUrl, vscode.ConfigurationTarget.Global);
-  const key = await vscode.window.showInputBox({ title: 'API key (leave empty if your endpoint needs none)', password: true, ignoreFocusOut: true, placeHolder: 'stored in VS Code SecretStorage' });
-  if (key !== undefined) {
-    if (key) await ctx.secrets.store(SECRET_KEY, key);
-    else await ctx.secrets.delete(SECRET_KEY);
-  }
-  let models: string[] = [];
-  const apiKey = key || (await ctx.secrets.get(SECRET_KEY)) || '';
-  const list = (url: string) => new LLMClient({ name: 'x', baseUrl: url, apiKey, model: '', contextWindow: 0, maxOutputTokens: 0, toolMode: 'auto', vision: false }).listModels();
-  try {
-    models = await list(baseUrl);
-  } catch (e) {
-    // a chat website's address instead of its API: offer the API address found on the same server
-    const api = e instanceof LLMError && e.kind === 'not_api' ? e.suggestedBaseUrl : undefined;
-    if (api && (await vscode.window.showWarningMessage(`${baseUrl} is a web page, not an API. The API is at ${api}. Use it?`, 'Use it', 'Keep mine')) === 'Use it') {
-      await s.update('baseUrl', api, vscode.ConfigurationTarget.Global);
-      models = await list(api).catch(() => []);
-    } else if (!api) vscode.window.showWarningMessage(`Could not list models: ${(e as Error).message}`);
-  }
-  const model = models.length
-    ? (await vscode.window.showQuickPick(models, { title: 'Model', placeHolder: cur.model }))
-    : await vscode.window.showInputBox({ title: 'Model name', value: cur.model, ignoreFocusOut: true });
-  if (model) await s.update('model', model, vscode.ConfigurationTarget.Global);
-  const ctxWin = await vscode.window.showInputBox({ title: 'Context window (tokens)', value: String(cur.contextWindow), ignoreFocusOut: true });
-  if (ctxWin && Number(ctxWin) > 0) await s.update('contextWindow', Number(ctxWin), vscode.ConfigurationTarget.Global);
-  provider.updateStatus();
-  await provider.testConnection();
-}
 
 export interface TuglineApi {
   provider: ChatViewProvider;
@@ -319,7 +267,8 @@ export function activate(ctx: vscode.ExtensionContext): TuglineApi {
     vscode.commands.registerCommand('tugline.history.refresh', () => history.refresh()),
     // the model card in the chat panel's settings (the palette wizard stays as "Configure LLM Endpoint (step by step)")
     vscode.commands.registerCommand('tugline.configure', () => provider.showModelSettings()),
-    vscode.commands.registerCommand('tugline.configureWizard', () => configureWizard(ctx, provider)),
+    // the old step-by-step palette wizard: now the panel's provider gallery
+    vscode.commands.registerCommand('tugline.configureWizard', () => provider.showModelSettings('add')),
     // WS12: the generated wiki in a panel, and /doc for the selection (a reviewable docstring edit)
     vscode.commands.registerCommand('tugline.openWiki', () => {
       const ws = workspaceRoot();
@@ -340,14 +289,8 @@ export function activate(ctx: vscode.ExtensionContext): TuglineApi {
       await vscode.commands.executeCommand('tugline.chat.focus');
       provider.showView(view);
     }),
-    vscode.commands.registerCommand('tugline.setApiKey', async () => {
-      const key = await vscode.window.showInputBox({ title: 'Tugline API key', password: true, ignoreFocusOut: true });
-      if (key !== undefined) {
-        if (key) await ctx.secrets.store(SECRET_KEY, key);
-        else await ctx.secrets.delete(SECRET_KEY);
-        vscode.window.showInformationMessage(key ? 'Tugline: API key saved to SecretStorage.' : 'Tugline: API key removed.');
-      }
-    }),
+    // the key belongs to a connection: change it in the connection's form, in the panel
+    vscode.commands.registerCommand('tugline.setApiKey', () => provider.showModelSettings('edit')),
     vscode.commands.registerCommand('tugline.addSelection', () => {
       const ed = vscode.window.activeTextEditor;
       if (!ed || ed.selection.isEmpty) return;

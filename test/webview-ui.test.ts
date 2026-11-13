@@ -10,6 +10,7 @@ import path from 'node:path';
 import * as pw from 'playwright';
 import { chromium, type Browser, type Page } from 'playwright';
 import { resolveExecutable } from '../src/core/automation/browser/launch.js';
+import { PROVIDERS } from '../vscode/src/connections.js';
 
 const MEDIA = path.resolve('vscode/media');
 const CODICONS = [path.resolve('vscode/node_modules/@vscode/codicons/dist/codicon.css'), path.join(MEDIA, 'codicons/codicon.css')].find((f) => fs.existsSync(f));
@@ -53,9 +54,16 @@ async function open(theme: 'dark' | 'light' = 'dark', width = 420): Promise<Page
   const p = await browser.newPage({ viewport: { width, height: 760 } });
   await p.setContent(page(theme));
   await post(p, { type: 'chats', epoch: 'e1', active: 'c1', list: [{ id: 'c1', title: 'New chat' }] });
-  await post(p, { type: 'status', chatId: 'c1', model: 'qwen3-coder-30b', baseUrl: 'https://ai.example.com/api', mode: 'ask', running: false, picker: [{ value: 'profile:fast', label: 'fast (qwen3-4b)', group: 'profiles' }, { value: 'model:llama-3.3-70b', label: 'llama-3.3-70b', group: 'models' }, { value: 'model:qwen3-coder-30b', label: 'qwen3-coder-30b', group: 'models' }], choice: '', effort: 'default' });
+  await post(p, { type: 'connections', list: CONNS, providers: PROVIDERS, locked: {} });
+  await post(p, { type: 'status', chatId: 'c1', model: 'qwen3-coder-30b', baseUrl: 'https://ai.example.com/api', mode: 'ask', running: false, picker: [{ value: 'profile:fast', label: 'fast (qwen3-4b)', group: 'profiles' }, { value: 'model:llama-3.3-70b', label: 'llama-3.3-70b', group: 'models', info: { id: 'llama-3.3-70b', contextWindow: 131072, tools: true } }, { value: 'model:qwen3-coder-30b', label: 'qwen3-coder-30b', group: 'models', info: { id: 'qwen3-coder-30b', contextWindow: 262144, tools: true } }], choice: '', effort: 'default', connections: CONNS.map((c) => ({ id: c.id, name: c.name, provider: c.provider, host: c.host, model: c.model, active: c.active, lastTest: c.lastTest })) });
   return p;
 }
+
+/** Two saved connections: the company's Open WebUI (in use, tested) and Ollama. */
+const CONNS = [
+  { id: 'a1', name: 'Company AI', provider: 'openwebui', baseUrl: 'https://ai.example.com/api', host: 'ai.example.com', model: 'qwen3-coder-30b', contextWindow: 131072, toolMode: 'auto', hasKey: true, active: true, lastTest: { ok: true, at: 1763040000000, latencyMs: 900, tools: 'native' } },
+  { id: 'b2', name: 'Ollama', provider: 'ollama', baseUrl: 'http://localhost:11434/v1', host: 'localhost:11434', model: 'qwen3:8b', toolMode: 'auto', hasKey: false, active: false },
+];
 const post = (p: Page, m: unknown) => p.evaluate((msg) => window.postMessage(msg, '*'), m).then(() => p.waitForTimeout(30));
 const posted = (p: Page, type?: string) => p.evaluate((t) => (window as any).__posted.filter((m: any) => !t || m.type === t), type);
 async function shot(p: Page, name: string) {
@@ -67,7 +75,6 @@ test.after(async () => browser?.close());
 
 test('webview: mode, model and effort are menus inside the panel and post the choice', async () => {
   const p = await open();
-  await shot(p, 'empty-dark');
   assert.equal(await p.textContent('#modeBtn .lbl'), 'Ask first');
   assert.equal(await p.textContent('#modelBtn .lbl'), 'qwen3-coder-30b');
   await p.click('#modeBtn');
@@ -82,7 +89,11 @@ test('webview: mode, model and effort are menus inside the panel and post the ch
   await p.click('#modelBtn');
   assert.ok(await p.isVisible('#menuFilter'));
   await shot(p, 'menu-model-dark');
-  await p.fill('#menuFilter', 'llama');
+  // connections first, then the models on the one in use (with their context size), then config profiles
+  assert.deepEqual(await p.$$eval('#menu .mg', (els) => els.map((e) => e.textContent)), ['Connections', 'Models on Company AI', 'Config profiles']);
+  assert.deepEqual(await p.$$eval('#menu .mi', (els) => els.map((e) => (e as HTMLElement).dataset.value)), ['a1', 'b2', '', 'model:llama-3.3-70b', 'profile:fast']);
+  assert.match(await p.textContent('#menu .mi[data-value="model:llama-3.3-70b"]'), /128K/);
+  await p.fill('#menuFilter', 'llama-3');
   assert.deepEqual(await p.$$eval('#menu .mi', (els) => els.map((e) => (e as HTMLElement).dataset.value)), ['model:llama-3.3-70b']);
   await p.keyboard.press('Enter');
   assert.equal(await p.textContent('#modelBtn .lbl'), 'llama-3.3-70b');
@@ -96,62 +107,157 @@ test('webview: mode, model and effort are menus inside the panel and post the ch
   await p.click('#modeBtn');
   await p.keyboard.press('Escape');
   assert.equal(await p.isVisible('#menu'), false);
+  // switching the connection from the composer
+  await p.click('#modelBtn');
+  await p.click('#menu .mi[data-value="b2"]');
+  assert.deepEqual((await posted(p, 'conn')).at(-1), { type: 'conn', action: 'use', id: 'b2' });
+  await p.click('#modelBtn');
+  await p.click('#menu [data-act="addconn"]');
+  assert.equal(await p.isVisible('#view-settings'), true);
+  assert.ok(await p.isVisible('.tiles'), 'Add a connection opens the gallery');
   await p.close();
 });
 
-test('webview: the model, base URL and API key are set in the panel (no command palette)', async () => {
+test('webview: connections are added, tested and switched in the panel (no command palette)', async () => {
   const p = await open();
-  // "Model and API key" on the empty chat opens the settings at the model card
+  await shot(p, 'empty-dark');
+  // the welcome screen's line shows the connection in use
+  assert.match(await p.textContent('.empty .herocap'), /qwen3-coder-30b[\s\S]*Company AI, ai\.example\.com\. Connected/);
+  assert.match(await p.getAttribute('.empty .heroline', 'class'), /\bok\b/);
   await p.click('.empty a[data-act="cfg"]');
   assert.equal(await p.isVisible('#view-settings'), true);
   assert.deepEqual(await posted(p, 'configure'), [], 'not the palette wizard');
-  assert.ok((await posted(p, 'settings')).some((m: any) => m.action === 'load'));
-  await post(p, { type: 'settings', hasWorkspace: true, trusted: true, user: { file: '/home/u/.tugline/config.json', data: {} }, project: { file: '/w/.tugline/config.json', data: {} }, endpoint: { baseUrl: 'http://localhost:11434/v1', model: 'qwen3-coder:30b', contextWindow: 32768, maxOutputTokens: 8192, toolMode: 'auto', hasKey: false, locked: {} }, prefs: { permissionMode: 'ask', notifications: true, visibleTerminal: false } });
-  assert.equal(await p.inputValue('#epUrl'), 'http://localhost:11434/v1');
-  assert.equal(await p.inputValue('#epPreset'), 'ollama');
-  // a company server: pick the provider, type the URL and key, load the models, pick one
-  await p.selectOption('#epPreset', 'company');
-  assert.equal(await p.inputValue('#epUrl'), '');
-  await p.fill('#epUrl', 'https://ai.example.com/api');
-  await p.fill('#epKey', 'sk-test-123');
-  await p.click('#epLoad');
-  const req = (await posted(p, 'settings')).filter((m: any) => m.action === 'endpointModels').at(-1) as any;
-  assert.deepEqual({ baseUrl: req.baseUrl, apiKey: req.apiKey }, { baseUrl: 'https://ai.example.com/api', apiKey: 'sk-test-123' });
-  await post(p, { type: 'endpointModels', reqId: req.reqId, models: [{ id: 'qwen3-coder-30b', tags: ['coder'] }, { id: 'llama-3.3-70b', tags: [] }] });
-  assert.match(await p.textContent('#epModels'), /2 models on this endpoint/);
-  await p.click('#epModels .mi[data-model="llama-3.3-70b"]');
-  assert.equal(await p.inputValue('#epModel'), 'llama-3.3-70b');
-  await shot(p, 'settings-dark');
-  await p.click('#epSave');
-  const save = (await posted(p, 'settings')).filter((m: any) => m.action === 'saveEndpoint').at(-1);
-  assert.deepEqual(save, { type: 'settings', action: 'saveEndpoint', baseUrl: 'https://ai.example.com/api', apiKey: 'sk-test-123', model: 'llama-3.3-70b', contextWindow: 32768, maxOutputTokens: 8192, toolMode: 'auto' });
-  assert.match(await p.textContent('#epResult'), /Saving and testing llama-3\.3-70b/);
-  await post(p, { type: 'endpointResult', ok: true, model: 'llama-3.3-70b', report: { chatOk: true, nativeTools: true, textTools: false, latencyMs: 1800, errors: [] } });
-  assert.match(await p.textContent('#epResult'), /Connected to llama-3\.3-70b[\s\S]*native tool calls/);
-  assert.equal(await p.inputValue('#epKey'), '', 'the key is not kept in the page after saving');
-  await shot(p, 'settings-saved-dark');
-  // a narrow sidebar: nothing overflows sideways
-  await p.setViewportSize({ width: 260, height: 760 });
-  assert.equal(await p.$eval('#settings', (e) => e.scrollWidth <= e.clientWidth + 1), true, 'no horizontal scroll');
-  await p.click('details.more summary');
-  // what sticks out past the settings page's right edge (empty when nothing does)
-  const overflow = () => p.$eval('#settings', (root) => { const lim = root.getBoundingClientRect().right; return [...root.querySelectorAll('*')].filter((e) => e.getBoundingClientRect().right > lim + 1).map((e) => `${e.tagName.toLowerCase()}${e.id ? '#' + e.id : ''}.${(e as HTMLElement).className}`).slice(0, 8); });
-  for (const w of [180, 150]) {
+  assert.ok((await posted(p, 'conn')).some((m: any) => m.action === 'load'));
+  await post(p, { type: 'connections', list: CONNS, providers: PROVIDERS, locked: {} });
+  assert.equal(await p.locator('.crow').count(), 2);
+  assert.match(await p.textContent('.crow.on'), /Company AI[\s\S]*In use/);
+  await shot(p, 'connections-dark');
+  // the gallery: local servers that answer are marked running
+  await p.click('[data-c="add"]');
+  assert.ok((await posted(p, 'conn')).some((m: any) => m.action === 'detect'));
+  await post(p, { type: 'connLocal', servers: [{ kind: 'ollama', baseUrl: 'http://localhost:11434/v1', models: 7 }] });
+  assert.match(await p.textContent('.tile[data-p="ollama"]'), /Running, 7 models/);
+  assert.match(await p.textContent('.tile[data-p="lmstudio"]'), /Not running/);
+  await shot(p, 'gallery-dark');
+  // a custom URL: type the address and key; the server's models load by themselves
+  await p.click('.tile[data-p="custom"]');
+  await p.fill('#cfUrl', 'https://gw.example.com/v1');
+  await p.fill('#cfKey', 'sk-test-123');
+  await p.waitForTimeout(800);
+  const req = (await posted(p, 'conn')).filter((m: any) => m.action === 'models').at(-1) as any;
+  assert.equal(req.draft.baseUrl, 'https://gw.example.com/v1');
+  assert.equal(req.draft.apiKey, 'sk-test-123');
+  await post(p, { type: 'connModels', reqId: req.reqId, models: [{ id: 'llama-3.3-70b', contextWindow: 131072, tools: true }, { id: 'qwen3-coder-480b', contextWindow: 262144, maxOutput: 65536, tools: true, coder: true }, { id: 'bge-m3', tools: false }] });
+  await p.click('#cfModel');
+  // coder and tool-capable models first
+  assert.deepEqual(await p.$$eval('#cfList .mo', (els) => els.map((e) => (e as HTMLElement).dataset.model)), ['qwen3-coder-480b', 'llama-3.3-70b', 'bge-m3']);
+  await shot(p, 'form-models-dark');
+  await p.fill('#cfModel', 'llama');
+  assert.deepEqual(await p.$$eval('#cfList .mo', (els) => els.map((e) => (e as HTMLElement).dataset.model)), ['llama-3.3-70b']);
+  await p.keyboard.press('ArrowDown');
+  await p.keyboard.press('Enter');
+  assert.equal(await p.inputValue('#cfModel'), 'llama-3.3-70b');
+  // Auto follows what the server reports for the model; a custom size is a number box
+  assert.equal(await p.textContent('#cfCtx button.on'), 'Auto (128K)');
+  await p.click('#cfCtx [data-ctx="custom"]');
+  await p.fill('#cfCtxCustom', '98304');
+  await p.click('details.fmore summary');
+  await p.click('#cfOut [data-out="16384"]');
+  await p.click('[data-c="addh"]');
+  await p.fill('.hrow .hn', 'X-Team');
+  await p.fill('.hrow .hv', 'team-7');
+  await p.fill('#cfName', 'Gateway');
+  await shot(p, 'form-dark');
+  // the test lights the line step by step
+  await p.click('[data-c="test"]');
+  const t = (await posted(p, 'conn')).filter((m: any) => m.action === 'test').at(-1) as any;
+  assert.deepEqual(t.draft.headers, [{ name: 'X-Team', value: 'team-7' }]);
+  for (const st of [
+    { name: 'server', state: 'ok', detail: 'gw.example.com answered in 120 ms' },
+    { name: 'model', state: 'ok', detail: 'llama-3.3-70b is served here' },
+    { name: 'chat', state: 'run' },
+  ]) await post(p, { type: 'connTest', reqId: t.reqId, ...st });
+  assert.match(await p.getAttribute('#cfTest', 'class'), /\brun\b/);
+  assert.equal(await p.locator('#cfTest .node.ok').count(), 2);
+  await p.$eval('#cfTest', (e) => e.scrollIntoView({ block: 'end' }));
+  await shot(p, 'test-running-dark');
+  await post(p, { type: 'connTest', reqId: t.reqId, name: 'chat', state: 'ok', detail: 'First reply in 0.9 s, about 41 tokens a second' });
+  await post(p, { type: 'connTest', reqId: t.reqId, name: 'tools', state: 'ok', detail: 'Native tool calls work' });
+  await post(p, { type: 'connTest', reqId: t.reqId, name: 'done', state: 'ok', tools: 'native' });
+  assert.match(await p.getAttribute('#cfTest', 'class'), /\bok\b/);
+  assert.match(await p.textContent('#cfTest'), /Ready to use/);
+  await p.$eval('.formacts', (e) => e.scrollIntoView({ block: 'end' }));
+  await shot(p, 'test-ok-dark');
+  // save and use
+  await p.click('[data-c="saveuse"]');
+  const save = (await posted(p, 'conn')).filter((m: any) => m.action === 'save').at(-1) as any;
+  assert.deepEqual(save, { type: 'conn', action: 'save', use: true, draft: { provider: 'custom', name: 'Gateway', baseUrl: 'https://gw.example.com/v1', apiKey: 'sk-test-123', model: 'llama-3.3-70b', contextWindow: 98304, maxOutputTokens: 16384, toolMode: 'auto', vision: false, headers: [{ name: 'X-Team', value: 'team-7' }] } });
+  await post(p, { type: 'connSaved', ok: true, id: 'c3', used: true });
+  assert.match(await p.textContent('#stab-connections'), /Saved\. All new messages use it\./);
+  // a failure says which step and what to do
+  await p.click('.crow[data-id="a1"] [data-c="edit"]');
+  assert.equal(await p.inputValue('#cfUrl'), 'https://ai.example.com/api');
+  assert.match(await p.getAttribute('#cfKey', 'placeholder'), /Saved\. Type to replace it/);
+  assert.equal(await p.inputValue('#cfKey'), '', 'a saved key never comes back to the page');
+  await p.click('[data-c="test"]');
+  const t2 = (await posted(p, 'conn')).filter((m: any) => m.action === 'test').at(-1) as any;
+  assert.equal(t2.draft.id, 'a1');
+  assert.equal(t2.draft.apiKey, undefined);
+  await post(p, { type: 'connTest', reqId: t2.reqId, name: 'server', state: 'fail', detail: 'ai.example.com answered with a web page, not an API.', suggestBaseUrl: 'https://ai.example.com/api/v1' });
+  await post(p, { type: 'connTest', reqId: t2.reqId, name: 'done', state: 'fail' });
+  assert.match(await p.textContent('#cfTest'), /Fix the server step above/);
+  await p.$eval('.formacts', (e) => e.scrollIntoView({ block: 'end' }));
+  await shot(p, 'test-fail-dark');
+  await p.click('#cfTest [data-c="usesuggest"]');
+  assert.equal(await p.inputValue('#cfUrl'), 'https://ai.example.com/api/v1');
+  // a narrow sidebar: nothing overflows sideways, on the form and in the gallery
+  const overflow = () => p.$eval('#settings', (root) => { const lim = root.getBoundingClientRect().right; return [...root.querySelectorAll('*')].filter((e) => e.getBoundingClientRect().width > 0 && e.getBoundingClientRect().right > lim + 1).map((e) => `${e.tagName.toLowerCase()}${e.id ? '#' + e.id : ''}.${(e as HTMLElement).className}`).slice(0, 8); });
+  for (const w of [260, 200, 160]) {
     await p.setViewportSize({ width: w, height: 760 });
-    assert.deepEqual(await overflow(), [], `nothing sticks out at ${w}px`);
+    assert.deepEqual(await overflow(), [], `form: nothing sticks out at ${w}px`);
   }
-  await p.setViewportSize({ width: 260, height: 760 });
-  assert.ok((await p.$eval('#epModel', (e) => e.getBoundingClientRect().width)) > 120, 'the model box stays usable');
-  assert.equal(await p.$eval('#epKey', (e) => e.getBoundingClientRect().right <= e.closest('.card')!.getBoundingClientRect().right), true, 'the key box fits its card');
-  await shot(p, 'settings-narrow-dark');
+  await shot(p, 'form-narrow-dark');
   await p.setViewportSize({ width: 420, height: 760 });
-  // a chat website's address: the error and the API address the host found
-  await p.fill('#epUrl', 'https://ai.example.com');
-  await p.click('#epLoad');
-  const req2 = (await posted(p, 'settings')).filter((m: any) => m.action === 'endpointModels').at(-1) as any;
-  await post(p, { type: 'endpointModels', reqId: req2.reqId, models: [], error: 'https://ai.example.com answered with a web page, not an OpenAI-compatible API.', suggestBaseUrl: 'https://ai.example.com/api' });
-  await p.click('[data-ep="useSuggest"]');
-  assert.equal(await p.inputValue('#epUrl'), 'https://ai.example.com/api');
+  await p.click('[data-c="back"]');
+  await p.click('[data-c="add"]');
+  for (const w of [260, 160]) {
+    await p.setViewportSize({ width: w, height: 760 });
+    assert.deepEqual(await overflow(), [], `gallery: nothing sticks out at ${w}px`);
+    // the header's buttons wrap instead of widening the page (a sideways scrollbar under the panel)
+    assert.equal(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), true, `no page scroll at ${w}px`);
+    assert.ok(await p.$eval('#estop', (e) => e.getBoundingClientRect().right <= window.innerWidth + 1), `the header fits at ${w}px`);
+  }
+  await p.close();
+});
+
+test('webview: the connection screens on the light theme, and deleting asks first', async () => {
+  const p = await open('light');
+  await shot(p, 'empty-light');
+  await p.click('#modelBtn');
+  await shot(p, 'menu-model-light');
+  await p.keyboard.press('Escape');
+  await p.click('nav.views [data-view="settings"]');
+  await post(p, { type: 'connections', list: CONNS, providers: PROVIDERS, locked: {} });
+  await shot(p, 'connections-light');
+  await p.click('.crow[data-id="b2"] [data-c="del"]');
+  assert.ok(await p.isVisible('.crow[data-id="b2"] .cconfirm'));
+  assert.equal((await posted(p, 'conn')).filter((m: any) => m.action === 'delete').length, 0, 'nothing deleted before the confirmation');
+  await p.click('.crow[data-id="b2"] [data-c="delyes"]');
+  assert.deepEqual((await posted(p, 'conn')).at(-1), { type: 'conn', action: 'delete', id: 'b2' });
+  assert.equal(await p.locator('.crow[data-id="a1"] [data-c="del"]').count(), 0, 'the connection in use cannot be deleted');
+  await p.click('[data-c="add"]');
+  await post(p, { type: 'connLocal', servers: [] });
+  await shot(p, 'gallery-light');
+  await p.click('.tile[data-p="openrouter"]');
+  assert.equal(await p.inputValue('#cfUrl'), 'https://openrouter.ai/api/v1');
+  assert.ok(await p.isVisible('a[href="https://openrouter.ai/keys"]'), 'a link to get a key');
+  await shot(p, 'form-light');
+  // behaviour: the permission modes are a list, not a dropdown
+  await post(p, { type: 'settings', hasWorkspace: true, trusted: true, user: { file: '/home/u/.tugline/config.json', data: {} }, project: { file: '/w/.tugline/config.json', data: {} }, prefs: { permissionMode: 'ask', notifications: true, visibleTerminal: false } });
+  await p.click('.stab[data-stab="behaviour"]');
+  await p.click('.moderow.m-plan');
+  assert.deepEqual((await posted(p, 'settings')).filter((m: any) => m.action === 'pref').at(-1), { type: 'settings', action: 'pref', key: 'permissionMode', value: 'plan' });
+  await shot(p, 'behaviour-light');
   await p.close();
 });
 
