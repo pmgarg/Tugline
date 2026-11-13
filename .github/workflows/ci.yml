@@ -263,6 +263,9 @@ jobs:
             grep -q " $f\$" artefacts/vsix-contents.txt || { echo "::error title=vsix::missing $f"; exit 1; }
           done
           grep -q ' extension/resources/skills/' artefacts/vsix-contents.txt || { echo "::error title=vsix::missing bundled skills"; exit 1; }
+          # the Marketplace page loads the README's images from GitHub: they must point at vscode/images, where they are
+          unzip -p artefacts/*.vsix extension/readme.md | grep -oE '\]\(https://github.com/[^)]*\.png\)' > artefacts/readme-images.txt || true
+          if [ ! -s artefacts/readme-images.txt ] || grep -v '/raw/HEAD/vscode/images/' artefacts/readme-images.txt; then echo "::error title=vsix::README images do not point at vscode/images on GitHub"; exit 1; fi
           if grep -qE ' extension/(src|node_modules)/' artefacts/vsix-contents.txt; then echo "::error title=vsix::dev files shipped"; exit 1; fi
 
       - name: Smoke test the packed artefacts

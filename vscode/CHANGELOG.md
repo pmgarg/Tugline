@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.6.1
+- The Marketplace page shows its screenshots again (their addresses pointed at the wrong folder of the repository).
+
 ## 1.6.0: connections, set up in the panel
 - **Connections.** Save each place your model runs once: Ollama on this computer, your company's server, OpenRouter and so on. Switch between them from the model button under the message box. The endpoint you already use becomes the first connection, with its key.
   - **Add a connection** opens a gallery: Ollama, LM Studio and llama.cpp (marked when they are running on this computer), a company server, Open WebUI, an API gateway, OpenRouter, OpenAI, Google Gemini, DeepSeek, Mistral, Groq, Together AI, or any URL.
