@@ -1135,3 +1135,12 @@ test('settings view: a saved API key is sent only to its own server (browsing pr
   assert.equal(sameOrigin('http://ai.example.com/v1', 'https://ai.example.com/v1'), false, 'and another scheme');
   assert.equal(sameOrigin('not a url', 'https://x/v1'), false);
 });
+
+test('vscode: the package keeps the Marketplace identity it was accepted under (a taken display name is refused on upload)', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.resolve('vscode/package.json'), 'utf8'));
+  // the listing is tugline.tugline-agent; "tugline" and "Tugline: coding agent for any model" were refused
+  assert.equal(pkg.publisher, 'tugline');
+  assert.equal(pkg.name, 'tugline-agent');
+  assert.equal(pkg.displayName, 'Tugline Agent: coding agent for any model');
+  assert.equal(pkg.preview, undefined, 'a stable release');
+});

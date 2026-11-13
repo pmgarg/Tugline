@@ -1,6 +1,6 @@
 {
   "name": "tugline-agent",
-  "displayName": "Tugline: coding agent for any model",
+  "displayName": "Tugline Agent: coding agent for any model",
   "description": "A coding agent that runs on the model you choose (Ollama, LM Studio, vLLM, your company server or any OpenAI-compatible API). Sandboxed commands, reviewable edits, and runs verified by your own tests.",
   "version": "1.6.0",
   "publisher": "tugline",
